@@ -41,7 +41,7 @@ class AIInterpretation(Base):
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 	medical_case_id: Mapped[uuid.UUID] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="CASCADE"), nullable=False, index=True
+		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="CASCADE"), nullable=False, index=True
 	)
 	summary: Mapped[str | None] = mapped_column(String, nullable=True)
 	value_breakdown: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
