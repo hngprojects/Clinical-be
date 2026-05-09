@@ -1,13 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserBase(BaseModel):
 	model_config = ConfigDict(from_attributes=True)
 
-	email: str
+	email: EmailStr
 	google_id: str | None = None
 	name: str
 	role: str
