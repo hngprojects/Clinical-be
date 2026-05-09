@@ -2,12 +2,28 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.models.lab_result import OCRStatus
+
+
+class FileObject(BaseModel):
+	"""Represents an uploaded file."""
+
+	name: str
+	url: str
 
 
 class LabResultBase(BaseModel):
-	file: dict[str, Any]
-	ocr_status: str
+	file: FileObject
+	ocr_status: OCRStatus
+
+	@field_validator("file", mode="before")
+	@classmethod
+	def parse_file(cls, v: Any) -> Any:
+		if isinstance(v, dict):
+			return FileObject(**v)
+		return v
 
 
 class LabResultCreate(LabResultBase):
@@ -19,7 +35,7 @@ class LabResultCreate(LabResultBase):
 class LabResultUpdate(BaseModel):
 	"""Schema for updating a lab result after OCR processing."""
 
-	ocr_status: str | None = None
+	ocr_status: OCRStatus | None = None
 	extracted_values: dict[str, Any] | None = None
 	ocr_completed_at: datetime | None = None
 

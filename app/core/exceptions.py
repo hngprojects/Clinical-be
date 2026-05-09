@@ -1,10 +1,12 @@
+import logging
+
 from fastapi import HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.responses import ErrorDetail, ErrorResponse
 
-# TODO: Add Logging for exceptions
+logger = logging.getLogger(__name__)
 
 
 class NotFoundError(HTTPException):
@@ -39,7 +41,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 	"""Handles all HTTPExceptions and returns a consistent error response."""
 	return JSONResponse(
 		status_code=exc.status_code,
-		content=ErrorResponse(message=exc.detail).model_dump(),
+		content=ErrorResponse(message=str(exc.detail)).model_dump(),
 	)
 
 
@@ -60,6 +62,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 	"""Catches any unhandled exceptions and returns a generic 500 response."""
+	logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
 	return JSONResponse(
 		status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 		content=ErrorResponse(message="An unexpected error occurred. Please try again later.").model_dump(),

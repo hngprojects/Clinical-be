@@ -17,7 +17,7 @@ class ChatBase(BaseModel):
 class ChatCreate(ChatBase):
 	"""Request schema for creating a new chat message."""
 
-	pass
+	user_id: uuid.UUID | None = None
 
 
 class ChatResponse(ChatBase):
