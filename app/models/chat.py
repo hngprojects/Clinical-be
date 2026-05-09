@@ -23,11 +23,11 @@ class Chat(Base):
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 	user_id: Mapped[uuid.UUID | None] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=True
+		UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=True, index=True
 	)
 	sender_type: Mapped[SenderType] = mapped_column(Enum(SenderType), nullable=False)
 	content: Mapped[dict] = mapped_column(JSONB, nullable=False)  # Storing message content as JSON for flexibility
 	sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 	medical_case_id: Mapped[uuid.UUID] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="CASCADE"), nullable=False
+		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="CASCADE"), nullable=False, index=True
 	)

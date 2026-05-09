@@ -26,7 +26,6 @@ class NotificationUpdate(BaseModel):
 	"""Schema for updating a notification, currently only supports marking as read."""
 
 	is_read: bool
-	read_at: datetime | None = None
 
 
 class NotificationResponse(NotificationBase):
