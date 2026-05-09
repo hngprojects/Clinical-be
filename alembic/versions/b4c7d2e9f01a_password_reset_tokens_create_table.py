@@ -1,7 +1,7 @@
-"""password_reset_tokens: create table (follow-up to empty eefdbf628c7d)
+"""password_reset_tokens: create table
 
 Revision ID: b4c7d2e9f01a
-Revises: eefdbf628c7d
+Revises: aabbb6d8362b
 Create Date: 2026-05-09
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b4c7d2e9f01a"
-down_revision: Union[str, None] = "eefdbf628c7d"
+down_revision: Union[str, None] = "aabbb6d8362b"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
