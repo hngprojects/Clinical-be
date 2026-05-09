@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import UnauthorizedError
@@ -14,6 +14,13 @@ from app.models.user import User
 
 
 async def create_password_reset(session: AsyncSession, user: User) -> str:
+	now = datetime.now(timezone.utc)
+	await session.execute(
+		delete(PasswordResetToken).where(
+			PasswordResetToken.user_id == user.id,
+			PasswordResetToken.expires_at > now,
+		)
+	)
 	raw = new_opaque_token()
 	expires = datetime.now(timezone.utc) + timedelta(minutes=60)
 	password_reset_token = PasswordResetToken(
@@ -28,7 +35,6 @@ async def create_password_reset(session: AsyncSession, user: User) -> str:
 
 
 async def delete_password_reset_by_raw_token(session: AsyncSession, raw_token: str) -> None:
-	"""Remove a reset row by opaque token (used when email delivery fails after commit)."""
 	h = hash_opaque_token(raw_token)
 	row = await session.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == h))
 	if row is not None:
@@ -38,7 +44,11 @@ async def delete_password_reset_by_raw_token(session: AsyncSession, raw_token: s
 
 async def reset_password(session: AsyncSession, raw_token: str, new_password: str) -> None:
 	h = hash_opaque_token(raw_token)
-	row = await session.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == h))
+	row = await session.scalar(
+		select(PasswordResetToken)
+		.where(PasswordResetToken.token_hash == h)
+		.with_for_update()
+	)
 	now = datetime.now(timezone.utc)
 	if row is None or row.expires_at < now:
 		raise UnauthorizedError("Invalid or expired reset token")
