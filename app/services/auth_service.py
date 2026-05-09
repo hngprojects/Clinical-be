@@ -27,6 +27,15 @@ async def create_password_reset(session: AsyncSession, user: User) -> str:
 	return raw
 
 
+async def delete_password_reset_by_raw_token(session: AsyncSession, raw_token: str) -> None:
+	"""Remove a reset row by opaque token (used when email delivery fails after commit)."""
+	h = hash_opaque_token(raw_token)
+	row = await session.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == h))
+	if row is not None:
+		await session.delete(row)
+		await session.flush()
+
+
 async def reset_password(session: AsyncSession, raw_token: str, new_password: str) -> None:
 	h = hash_opaque_token(raw_token)
 	row = await session.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == h))

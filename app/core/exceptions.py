@@ -9,6 +9,13 @@ from app.core.responses import ErrorDetail, ErrorResponse
 logger = logging.getLogger(__name__)
 
 
+class EmailError(HTTPException):
+	"""Raised when an email error occurs."""
+
+	def __init__(self, message: str = "Email error") -> None:
+		super().__init__(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=message)
+
+
 class NotFoundError(HTTPException):
 	"""Raised when a requested resource does not exist."""
 
