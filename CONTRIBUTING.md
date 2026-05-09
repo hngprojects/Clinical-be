@@ -65,7 +65,7 @@ If you have an idea for a new feature, please open an issue on [GitHub Issues](h
 
 All branches must follow this format:
 
-```
+```text
 <type>/<short-description>
 ```
 
@@ -90,7 +90,7 @@ All branches must follow this format:
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <subject>
 
 [optional body]
@@ -141,12 +141,14 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 ### Examples
 
 **Simple commit:**
-```
+
+```text
 feat(cases): add endpoint to create a medical case
 ```
 
 **Commit with body:**
-```
+
+```text
 fix(auth): handle expired refresh tokens gracefully
 
 The previous implementation did not check token expiry before
@@ -157,7 +159,8 @@ Closes #42
 ```
 
 **Breaking change:**
-```
+
+```text
 feat(api): change medical case response format to include symptoms
 
 BREAKING CHANGE: the medical case response object now nests symptom
@@ -165,7 +168,8 @@ data under a "symptoms" key instead of a flat "issues" array.
 ```
 
 **Multiple issues:**
-```
+
+```text
 fix(notifications): resolve duplicate email sending
 
 Duplicate emails were sent when a medical case was updated due to
@@ -177,7 +181,7 @@ Relates to #65
 
 ### ❌ Bad Commit Messages
 
-```
+```text
 # Vague
 fix: bug fix
 
@@ -201,7 +205,7 @@ refactor: change code
    ```bash
    uv run pytest
    ```
-4. Push your branch and open a PR against `main`
+4. Push your branch and open a PR against `dev`
 5. Fill in the PR template completely — **incomplete PRs will not be reviewed**
 
 ### PR Requirements
@@ -274,7 +278,7 @@ async def test_list_cases_returns_empty_list_when_none_exist(client: AsyncClient
 
 ### Test Naming Convention
 
-```
+```text
 test_<action>_<expected_outcome>_<condition>
 ```
 
@@ -287,7 +291,7 @@ Examples:
 
 ## Code Style
 
-- Follow PEP 8
+- Follow the project's code style (see [.ruff.toml](.ruff.toml))
 - Use type hints for all function signatures
 - Use `async/await` for all I/O operations
 - Keep functions focused — one responsibility per function

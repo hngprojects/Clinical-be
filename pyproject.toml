@@ -23,7 +23,6 @@ dev = [
     "httpx>=0.28.0",
     "ruff>=0.15.12",
     "pytest-pylembic>=0.3.0",
-    "mypy>=2.0.0",
     "commitizen>=4.15.1",
 ]
 

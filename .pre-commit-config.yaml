@@ -2,7 +2,7 @@ default_install_hook_types: [pre-commit, commit-msg]
 
 repos:
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.1.0
+    rev: v4.15.1
     hooks:
       - id: commitizen
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -13,10 +13,9 @@ repos:
       - id: ruff-format
   - repo: local
     hooks:
-      - id: pytest
-        name: pytest
-        entry: uv run pytest
+      - id: pytest-migrations
+        name: pytest (migration integrity)
+        entry: uv run pytest tests/test_migrations.py --maxfail=1 -q
         language: system
-        types: [python]
         pass_filenames: false
-        always_run: true
+        stages: [pre-commit]
