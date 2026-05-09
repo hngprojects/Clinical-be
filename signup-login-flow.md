@@ -214,12 +214,3 @@ curl -s http://localhost:8000/api/v1/auth/me \
 	-H "Authorization: Bearer $TOKEN"
 ```
 
-## Open follow-ups
-
-- Add per-IP / per-email rate limiting at the edge (e.g. `slowapi`) to
-  complement the per-OTP attempt limit.
-- Add refresh tokens if longer sessions are required.
-- Wire Google OAuth in a follow-up branch using the existing `google_id`
-  column on `users`.
-- Tests: add `tests/test_auth.py` covering happy-path signup→verify→login,
-  expiry, max-attempt lockout, and JWT auth on `/auth/me`.
