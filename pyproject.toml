@@ -21,6 +21,9 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "ruff>=0.15.12",
+    "pytest-pylembic>=0.3.0",
+    "mypy>=2.0.0",
+    "commitizen>=4.15.1",
 ]
 
 [tool.pytest.ini_options]
@@ -45,3 +48,10 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "tab"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [
+    "pyproject.toml:version"
+]
