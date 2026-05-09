@@ -1,0 +1,37 @@
+import enum
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base
+
+
+class NotificationType(str, enum.Enum):
+	"""Type of notification sent to the user."""
+
+	INTERPRETATION_READY = "interpretation_ready"
+	INTERPRETATION_FAILED = "interpretation_failed"
+
+
+class Notification(Base):
+	"""Model representing a notification sent to a user."""
+
+	__tablename__ = "notification"
+
+	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+	user_id: Mapped[uuid.UUID] = mapped_column(
+		UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+	)
+	medical_case_id: Mapped[uuid.UUID | None] = mapped_column(
+		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="SET NULL"), nullable=True
+	)
+	type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
+	title: Mapped[str] = mapped_column(String, nullable=False)
+	message: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+	data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+	is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+	read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

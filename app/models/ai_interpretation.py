@@ -35,6 +35,8 @@ class InterpretationStatus(str, enum.Enum):
 
 
 class AIInterpretation(Base):
+	"""Model representing the AI interpretation of a medical case"""
+
 	__tablename__ = "ai_interpretation"
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
