@@ -22,17 +22,16 @@ async def forgot_password(
 	request: ForgotPasswordRequest, session: AsyncSession = Depends(get_session)
 ) -> SuccessResponse:
 	user = await session.scalar(select(User).where(User.email == request.email))
-	if not user:
-		raise NotFoundError("User not found")
-	raw = await create_password_reset(session, user)
-	await session.commit()
+	if user:
+		raw = await create_password_reset(session, user)
+		await session.commit()
 	try:
 		send_password_reset_email(user.email, raw)
 	except Exception:
 		await delete_password_reset_by_raw_token(session, raw)
 		await session.commit()
 		raise
-	return SuccessResponse(message=f"Password reset email sent to {user.email}")
+	return SuccessResponse(message="Password reset email sent successfully")
 
 
 @router.post(
