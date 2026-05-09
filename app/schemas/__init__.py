@@ -4,6 +4,14 @@ from app.schemas.ai_interpretation import (
 	AIInterpretationResponse,
 	AIInterpretationUpdate,
 )
+from app.schemas.auth import (
+	LoginRequest,
+	OtpDispatchResponse,
+	ResendOtpRequest,
+	SignupRequest,
+	TokenResponse,
+	VerifyOtpRequest,
+)
 from app.schemas.chat import ChatBase, ChatCreate, ChatResponse
 from app.schemas.lab_result import LabResultBase, LabResultCreate, LabResultResponse, LabResultUpdate
 from app.schemas.medical_case import MedicalCaseBase, MedicalCaseCreate, MedicalCaseResponse, MedicalCaseUpdate
@@ -18,6 +26,13 @@ __all__ = [
 	"GoogleUserCreate",
 	"UserUpdate",
 	"UserResponse",
+	# Auth
+	"SignupRequest",
+	"LoginRequest",
+	"VerifyOtpRequest",
+	"ResendOtpRequest",
+	"TokenResponse",
+	"OtpDispatchResponse",
 	# MedicalCase
 	"MedicalCaseBase",
 	"MedicalCaseCreate",

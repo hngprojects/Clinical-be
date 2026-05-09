@@ -1,0 +1,51 @@
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.models.otp import OtpPurpose
+from app.schemas.user import UserResponse
+
+
+class SignupRequest(BaseModel):
+	"""Body sent by the signup form: first name, last name, email."""
+
+	first_name: str = Field(min_length=1, max_length=100)
+	last_name: str = Field(min_length=1, max_length=100)
+	email: EmailStr
+
+
+class LoginRequest(BaseModel):
+	"""Step 1 of login: ask for an OTP to be sent to the user's email."""
+
+	email: EmailStr
+
+
+class VerifyOtpRequest(BaseModel):
+	"""Step 2: verify the OTP. `purpose` decides whether this completes
+	signup (email verification) or login."""
+
+	email: EmailStr
+	code: str = Field(min_length=4, max_length=12)
+	purpose: OtpPurpose
+
+
+class ResendOtpRequest(BaseModel):
+	email: EmailStr
+	purpose: OtpPurpose
+
+
+class TokenResponse(BaseModel):
+	"""Returned after a successful OTP verification."""
+
+	access_token: str
+	token_type: str = "bearer"
+	expires_in: int
+	user: UserResponse
+
+	model_config = ConfigDict(from_attributes=True)
+
+
+class OtpDispatchResponse(BaseModel):
+	"""Returned after an OTP is dispatched (signup, login, resend)."""
+
+	email: EmailStr
+	purpose: OtpPurpose
+	expires_in_seconds: int

@@ -1,14 +1,15 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
 	email: EmailStr
-	name: str
+	first_name: str = Field(min_length=1, max_length=100)
+	last_name: str = Field(min_length=1, max_length=100)
 	role: UserRole = UserRole.PATIENT
 	is_email_verified: bool = False
 	is_active: bool = True
@@ -29,7 +30,8 @@ class GoogleUserCreate(UserBase):
 class UserUpdate(BaseModel):
 	"""Schema for updating a user profile."""
 
-	name: str | None = None
+	first_name: str | None = Field(default=None, min_length=1, max_length=100)
+	last_name: str | None = Field(default=None, min_length=1, max_length=100)
 	is_active: bool | None = None
 
 
