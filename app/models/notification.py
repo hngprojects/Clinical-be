@@ -33,7 +33,9 @@ class Notification(Base):
 	medical_case_id: Mapped[uuid.UUID | None] = mapped_column(
 		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="SET NULL"), nullable=True, index=True
 	)
-	type: Mapped[NotificationType] = mapped_column(Enum(NotificationType, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+	type: Mapped[NotificationType] = mapped_column(
+		Enum(NotificationType, values_callable=lambda obj: [e.value for e in obj]), nullable=False
+	)
 	title: Mapped[str] = mapped_column(String, nullable=False)
 	message: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 	data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

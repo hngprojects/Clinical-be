@@ -8,10 +8,12 @@ from app.models.ai_interpretation import Confidence, InterpretationStatus, RiskL
 
 class ValueBreakdown(BaseModel):
 	"""Detailed metric from the AI interpretation."""
+
 	metric: str
 	value: str | float
 	unit: str | None = None
 	status: str | None = None
+
 
 class AIInterpretationBase(BaseModel):
 	"""Base schema for AI interpretation, used for both request and response models."""

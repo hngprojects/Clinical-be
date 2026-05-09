@@ -34,7 +34,9 @@ class MedicalCase(Base):
 		UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
 	)
 	guest_session_id: Mapped[str | None] = mapped_column(String, nullable=True)
-	status: Mapped[MedicalCaseStatus] = mapped_column(Enum(MedicalCaseStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+	status: Mapped[MedicalCaseStatus] = mapped_column(
+		Enum(MedicalCaseStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False
+	)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
 	)

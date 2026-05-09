@@ -30,7 +30,9 @@ class User(Base):
 	password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
 	google_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
 	name: Mapped[str] = mapped_column(String, nullable=False)
-	role: Mapped[UserRole] = mapped_column(Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=UserRole.PATIENT)
+	role: Mapped[UserRole] = mapped_column(
+		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=UserRole.PATIENT
+	)
 	is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 	is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 	created_at: Mapped[datetime] = mapped_column(

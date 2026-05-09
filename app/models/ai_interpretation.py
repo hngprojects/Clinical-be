@@ -50,10 +50,16 @@ class AIInterpretation(Base):
 	summary: Mapped[str | None] = mapped_column(String, nullable=True)
 	value_breakdown: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 	suggested_questions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-	risk_level: Mapped[RiskLevel | None] = mapped_column(Enum(RiskLevel, name="risklevel", values_callable=lambda obj: [e.value for e in obj]), nullable=True)
-	confidence: Mapped[Confidence | None] = mapped_column(Enum(Confidence, name="confidence", values_callable=lambda obj: [e.value for e in obj]), nullable=True)
+	risk_level: Mapped[RiskLevel | None] = mapped_column(
+		Enum(RiskLevel, name="risklevel", values_callable=lambda obj: [e.value for e in obj]), nullable=True
+	)
+	confidence: Mapped[Confidence | None] = mapped_column(
+		Enum(Confidence, name="confidence", values_callable=lambda obj: [e.value for e in obj]), nullable=True
+	)
 	status: Mapped[InterpretationStatus] = mapped_column(
-		Enum(InterpretationStatus, name="interpretationstatus", values_callable=lambda obj: [e.value for e in obj]), default=InterpretationStatus.PENDING, nullable=False
+		Enum(InterpretationStatus, name="interpretationstatus", values_callable=lambda obj: [e.value for e in obj]),
+		default=InterpretationStatus.PENDING,
+		nullable=False,
 	)
 	generated_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
