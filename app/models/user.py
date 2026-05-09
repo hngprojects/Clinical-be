@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 	from app.models.chat import Chat
 	from app.models.medical_case import MedicalCase
 	from app.models.notification import Notification
+	from app.models.otp import OtpCode
 
 
 class UserRole(str, enum.Enum):
@@ -26,10 +27,11 @@ class User(Base):
 	__tablename__ = "users"
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-	email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+	email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
 	password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
 	google_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
-	name: Mapped[str] = mapped_column(String, nullable=False)
+	first_name: Mapped[str] = mapped_column(String, nullable=False)
+	last_name: Mapped[str] = mapped_column(String, nullable=False)
 	role: Mapped[UserRole] = mapped_column(
 		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=UserRole.PATIENT
 	)
@@ -43,3 +45,8 @@ class User(Base):
 	medical_cases: Mapped[list["MedicalCase"]] = relationship(back_populates="user")
 	chats: Mapped[list["Chat"]] = relationship(back_populates="user")
 	notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
+	otp_codes: Mapped[list["OtpCode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+	@property
+	def full_name(self) -> str:
+		return f"{self.first_name} {self.last_name}".strip()
