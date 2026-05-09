@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.chat import SenderType
 
@@ -15,7 +15,7 @@ class ChatBase(BaseModel):
 
 
 class ChatCreate(ChatBase):
-	"""Request schema for creating a new chat message"""
+	"""Request schema for creating a new chat message."""
 
 	pass
 
@@ -27,4 +27,4 @@ class ChatResponse(ChatBase):
 	user_id: uuid.UUID | None
 	sent_at: datetime
 
-	model_config = {"from_attributes": True}
+	model_config = ConfigDict(from_attributes=True)

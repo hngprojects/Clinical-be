@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.notification import NotificationType
 
@@ -38,4 +38,4 @@ class NotificationResponse(NotificationBase):
 	read_at: datetime | None = None
 	created_at: datetime
 
-	model_config = {"from_attributes": True}
+	model_config = ConfigDict(from_attributes=True)

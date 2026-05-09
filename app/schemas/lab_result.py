@@ -6,19 +6,31 @@ from pydantic import BaseModel, ConfigDict
 
 
 class LabResultBase(BaseModel):
-	model_config = ConfigDict(from_attributes=True)
-
-	medical_case_id: UUID
-	file: Any
+	file: dict[str, Any]
 	ocr_status: str
-	extracted_data: dict[str, Any]
-	ocr_completed_at: datetime | None = None
 
 
 class LabResultCreate(LabResultBase):
-	pass
+	"""Schema for creating a lab result."""
+
+	medical_case_id: UUID
 
 
-class LabResultRead(LabResultBase):
+class LabResultUpdate(BaseModel):
+	"""Schema for updating a lab result after OCR processing."""
+
+	ocr_status: str | None = None
+	extracted_values: dict[str, Any] | None = None
+	ocr_completed_at: datetime | None = None
+
+
+class LabResultResponse(LabResultBase):
+	"""Response schema for a lab result."""
+
 	id: UUID
+	medical_case_id: UUID
+	extracted_values: dict[str, Any] | None = None
+	ocr_completed_at: datetime | None = None
 	created_at: datetime
+
+	model_config = ConfigDict(from_attributes=True)

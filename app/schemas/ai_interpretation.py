@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.ai_interpretation import Confidence, InterpretationStatus, RiskLevel
 
@@ -22,6 +22,18 @@ class AIInterpretationCreate(AIInterpretationBase):
 	medical_case_id: uuid.UUID
 
 
+class AIInterpretationUpdate(BaseModel):
+	"""Schema for updating an AI interpretation."""
+
+	summary: str | None = None
+	value_breakdown: dict | None = None
+	suggested_questions: dict | None = None
+	risk_level: RiskLevel | None = None
+	confidence: Confidence | None = None
+	status: InterpretationStatus | None = None
+	generated_at: datetime | None = None
+
+
 class AIInterpretationResponse(AIInterpretationBase):
 	"""Response schema for AI interpretation, includes all fields from the database model."""
 
@@ -30,4 +42,4 @@ class AIInterpretationResponse(AIInterpretationBase):
 	status: InterpretationStatus
 	generated_at: datetime
 
-	model_config = {"from_attributes": True}
+	model_config = ConfigDict(from_attributes=True)
