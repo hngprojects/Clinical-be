@@ -23,10 +23,10 @@ class Notification(Base):
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 	user_id: Mapped[uuid.UUID] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
+		UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
 	)
 	medical_case_id: Mapped[uuid.UUID | None] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="SET NULL"), nullable=True, index=True
+		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="SET NULL"), nullable=True, index=True
 	)
 	type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
 	title: Mapped[str] = mapped_column(String, nullable=False)
