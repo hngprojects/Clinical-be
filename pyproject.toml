@@ -14,7 +14,6 @@ dependencies = [
     "pre-commit>=4.6.0",
     "resend>=2.30.0",
     "bcrypt>=5.0.0",
-    "pyjwt>=2.12.1",
 ]
 
 [dependency-groups]
