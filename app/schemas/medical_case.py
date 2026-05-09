@@ -3,9 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.medical_case import MedicalCaseStatus
+
 
 class MedicalCaseBase(BaseModel):
-	status: str
+	status: MedicalCaseStatus
 
 
 class MedicalCaseCreate(MedicalCaseBase):
@@ -18,7 +20,7 @@ class MedicalCaseCreate(MedicalCaseBase):
 class MedicalCaseUpdate(BaseModel):
 	"""Schema for updating a medical case."""
 
-	status: str | None = None
+	status: MedicalCaseStatus | None = None
 	completed_at: datetime | None = None
 
 

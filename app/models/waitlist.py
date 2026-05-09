@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from app.models.base import Base
 
 
 class Waitlist(Base):

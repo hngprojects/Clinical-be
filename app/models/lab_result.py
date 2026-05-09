@@ -1,8 +1,9 @@
+import enum
 import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +11,15 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
 	from app.models.medical_case import MedicalCase
+
+
+class OCRStatus(str, enum.Enum):
+	"""Status of the OCR processing pipeline for a lab result."""
+
+	PENDING = "pending"
+	PROCESSING = "processing"
+	COMPLETE = "complete"
+	FAILED = "failed"
 
 
 class LabResult(Base):
@@ -20,7 +30,7 @@ class LabResult(Base):
 		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="CASCADE"), nullable=False, index=True
 	)
 	file: Mapped[dict] = mapped_column(JSONB, nullable=False)
-	ocr_status: Mapped[str] = mapped_column(String, nullable=False)
+	ocr_status: Mapped[OCRStatus] = mapped_column(Enum(OCRStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
 	extracted_values: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 	ocr_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 	created_at: Mapped[datetime] = mapped_column(
