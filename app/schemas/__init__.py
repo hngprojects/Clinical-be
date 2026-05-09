@@ -1,15 +1,20 @@
-from app.schemas.lab_result import LabResultBase, LabResultCreate, LabResultRead
-from app.schemas.medical_case import MedicalCaseBase, MedicalCaseCreate, MedicalCaseRead
-from app.schemas.user import UserBase, UserCreate, UserRead
+from app.schemas.auth import ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse
+from app.schemas.lab_result import LabResultBase, LabResultCreate, LabResultResponse
+from app.schemas.medical_case import MedicalCaseBase, MedicalCaseCreate, MedicalCaseResponse
+from app.schemas.user import UserBase, UserCreate, UserResponse
 
 __all__ = [
 	"UserBase",
 	"UserCreate",
-	"UserRead",
+	"UserResponse",
 	"MedicalCaseBase",
 	"MedicalCaseCreate",
-	"MedicalCaseRead",
+	"MedicalCaseResponse",
 	"LabResultBase",
 	"LabResultCreate",
-	"LabResultRead",
+	"LabResultResponse",
+	"ForgotPasswordRequest",
+	"ForgotPasswordResponse",
+	"ResetPasswordRequest",
+	"ResetPasswordResponse",
 ]
