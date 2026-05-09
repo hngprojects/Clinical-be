@@ -1,8 +1,8 @@
 """update user medical_case lab_result tables
 
-Revision ID: 33dd6ef0bf63
+Revision ID: 2306685d216c
 Revises: 90aeb7c687d7
-Create Date: 2026-05-09 09:53:53.495379
+Create Date: 2026-05-09 10:21:57.882420
 
 """
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision: str = '33dd6ef0bf63'
+revision: str = '2306685d216c'
 down_revision: Union[str, None] = '90aeb7c687d7'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,8 +28,8 @@ def upgrade() -> None:
     sa.Column('role', sa.String(), nullable=False),
     sa.Column('is_email_verified', sa.Boolean(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('last_login_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('last_login_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('google_id')
@@ -39,8 +39,8 @@ def upgrade() -> None:
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('guest_session_id', sa.String(), nullable=False),
     sa.Column('status', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('completed_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -51,8 +51,8 @@ def upgrade() -> None:
     sa.Column('file', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('ocr_status', sa.String(), nullable=False),
     sa.Column('extracted_data', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('ocr_completed_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('ocr_completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['medical_case_id'], ['medical_case.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

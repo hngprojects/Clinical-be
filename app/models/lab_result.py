@@ -22,7 +22,9 @@ class LabResult(Base):
 	file: Mapped[Any] = mapped_column(JSONB, nullable=False)
 	ocr_status: Mapped[str] = mapped_column(String, nullable=False)
 	extracted_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-	ocr_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-	created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+	ocr_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	created_at: Mapped[datetime] = mapped_column(
+		DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+	)
 
 	medical_case: Mapped["MedicalCase"] = relationship(back_populates="lab_results")
