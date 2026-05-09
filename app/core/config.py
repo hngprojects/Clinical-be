@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
 	CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"
+	EMAIL_FROM: str = "no-reply@clinsights.com"
+
+	RESEND_API_KEY: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
