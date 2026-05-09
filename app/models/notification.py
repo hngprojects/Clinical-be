@@ -19,14 +19,14 @@ class NotificationType(str, enum.Enum):
 class Notification(Base):
 	"""Model representing a notification sent to a user."""
 
-	__tablename__ = "notification"
+	__tablename__ = "notifications"
 
 	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 	user_id: Mapped[uuid.UUID] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+		UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
 	)
 	medical_case_id: Mapped[uuid.UUID | None] = mapped_column(
-		UUID(as_uuid=True), ForeignKey("medical_case.id", ondelete="SET NULL"), nullable=True
+		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="SET NULL"), nullable=True
 	)
 	type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
 	title: Mapped[str] = mapped_column(String, nullable=False)
