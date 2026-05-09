@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import settings
+from app.core.responses import SuccessResponse
 from app.core.security import create_access_token, create_refresh_token
 from app.db.session import get_session
 from app.models.user import User
+from app.schemas.auth import GoogleAuthData
+from app.schemas.user import UserResponse
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
@@ -34,7 +37,7 @@ async def google_login():
 	return RedirectResponse(url=google_auth_url)
 
 
-@router.get("/google/callback")
+@router.get("/google/callback", response_model=SuccessResponse[GoogleAuthData])
 async def google_callback(
 	code: str,
 	db: AsyncSession = Depends(get_session),
@@ -59,29 +62,22 @@ async def google_callback(
 	app_access_token = create_access_token(subject=str(user.id))
 	app_refresh_token = create_refresh_token(subject=str(user.id))
 
-	return {
-		"message": "Google authentication successful",
-		"access_token": app_access_token,
-		"refresh_token": app_refresh_token,
-		"token_type": "bearer",
-		"user": {
-			"id": str(user.id),
-			"email": user.email,
-			"name": user.name,
-			"is_email_verified": user.is_email_verified,
-			"role": user.role.value,
-		},
-	}
+	return SuccessResponse[GoogleAuthData](
+		message="Google authentication successful",
+		data=GoogleAuthData(
+			access_token=app_access_token,
+			refresh_token=app_refresh_token,
+			token_type="bearer",
+			user=UserResponse.model_validate(user),
+		),
+	)
 
 
-@router.get("/me")
+@router.get("/me", response_model=SuccessResponse[UserResponse])
 async def get_me(
 	current_user: User = Depends(get_current_user),
 ):
-	return {
-		"id": str(current_user.id),
-		"email": current_user.email,
-		"name": current_user.name,
-		"is_email_verified": current_user.is_email_verified,
-		"role": current_user.role.value,
-	}
+	return SuccessResponse[UserResponse](
+		message="User retrieved successfully",
+		data=UserResponse.model_validate(current_user),
+	)
