@@ -108,11 +108,12 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_notification_medical_case_id'), 'notification', ['medical_case_id'], unique=False)
     op.create_index(op.f('ix_notification_user_id'), 'notification', ['user_id'], unique=False)
+    # drop dependent/child tables first to avoid "dependent objects exist" DB errors
+    op.drop_index(op.f('ix_lab_result_medical_case_id'), table_name='lab_result')
+    op.drop_table('lab_result')
     op.drop_index(op.f('ix_medical_case_user_id'), table_name='medical_case')
     op.drop_table('medical_case')
     op.drop_table('user')
-    op.drop_index(op.f('ix_lab_result_medical_case_id'), table_name='lab_result')
-    op.drop_table('lab_result')
     # ### end Alembic commands ###
 
 
