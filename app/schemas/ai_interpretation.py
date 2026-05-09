@@ -35,8 +35,8 @@ class AIInterpretationUpdate(BaseModel):
 	"""Schema for updating an AI interpretation."""
 
 	summary: str | None = None
-	value_breakdown: dict | None = None
-	suggested_questions: dict | None = None
+	value_breakdown: list[ValueBreakdown] | None = None
+	suggested_questions: list[str] | None = None
 	risk_level: RiskLevel | None = None
 	confidence: Confidence | None = None
 	status: InterpretationStatus | None = None

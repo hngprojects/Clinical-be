@@ -62,7 +62,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 	"""Catches any unhandled exceptions and returns a generic 500 response."""
-	logger.exception("Unhandled exception on %s %s", request.method, request.url)
+	logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
 	return JSONResponse(
 		status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 		content=ErrorResponse(message="An unexpected error occurred. Please try again later.").model_dump(),
