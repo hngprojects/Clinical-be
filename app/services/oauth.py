@@ -52,27 +52,48 @@ async def get_or_create_google_user(
 	db: AsyncSession,
 	google_user: dict,
 ) -> User:
-	google_sub = google_user.get("sub")
+	google_id = google_user.get("sub")
 	email = google_user.get("email")
+	email_verified = google_user.get("email_verified", False)
+	name = google_user.get("name") or email
 
-	if not google_sub or not email:
+	if not google_id or not email:
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
 			detail="Google user profile is missing required fields",
 		)
 
-	result = await db.execute(select(User).where(User.email == email))
+	if not email_verified:
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Google email address is not verified",
+		)
+
+	result = await db.execute(select(User).where(User.google_id == google_id))
 	user = result.scalar_one_or_none()
 
 	if user:
+		user.email = email
+		user.name = name
+		user.is_email_verified = True
+		await db.commit()
+		await db.refresh(user)
 		return user
 
+	existing_email_result = await db.execute(select(User).where(User.email == email))
+	existing_email_user = existing_email_result.scalar_one_or_none()
+
+	if existing_email_user:
+		raise HTTPException(
+			status_code=status.HTTP_409_CONFLICT,
+			detail="An account with this email already exists",
+		)
+
 	user = User(
-		google_sub=google_sub,
+		google_id=google_id,
 		email=email,
-		name=google_user.get("name"),
-		picture=google_user.get("picture"),
-		email_verified=google_user.get("email_verified", False),
+		name=name,
+		is_email_verified=True,
 	)
 
 	db.add(user)

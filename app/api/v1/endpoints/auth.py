@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,13 +20,16 @@ router = APIRouter()
 
 @router.get("/google")
 async def google_login():
-	google_auth_url = (
-		"https://accounts.google.com/o/oauth2/v2/auth"
-		f"?client_id={settings.GOOGLE_CLIENT_ID}"
-		f"&redirect_uri={settings.GOOGLE_REDIRECT_URI}"
-		"&response_type=code"
-		"&scope=openid%20email%20profile"
+	query_params = urlencode(
+		{
+			"client_id": settings.GOOGLE_CLIENT_ID,
+			"redirect_uri": settings.GOOGLE_REDIRECT_URI,
+			"response_type": "code",
+			"scope": "openid email profile",
+		}
 	)
+
+	google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{query_params}"
 
 	return RedirectResponse(url=google_auth_url)
 
@@ -52,7 +57,6 @@ async def google_callback(
 	)
 
 	app_access_token = create_access_token(subject=str(user.id))
-
 	app_refresh_token = create_refresh_token(subject=str(user.id))
 
 	return {
@@ -61,11 +65,11 @@ async def google_callback(
 		"refresh_token": app_refresh_token,
 		"token_type": "bearer",
 		"user": {
-			"id": user.id,
+			"id": str(user.id),
 			"email": user.email,
 			"name": user.name,
-			"picture": user.picture,
-			"email_verified": user.email_verified,
+			"is_email_verified": user.is_email_verified,
+			"role": user.role.value,
 		},
 	}
 
@@ -75,9 +79,9 @@ async def get_me(
 	current_user: User = Depends(get_current_user),
 ):
 	return {
-		"id": current_user.id,
+		"id": str(current_user.id),
 		"email": current_user.email,
 		"name": current_user.name,
-		"picture": current_user.picture,
-		"email_verified": current_user.email_verified,
+		"is_email_verified": current_user.is_email_verified,
+		"role": current_user.role.value,
 	}

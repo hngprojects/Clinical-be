@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.models.base import Base
-
-=======
 import enum
 import uuid
 from datetime import datetime, timezone
@@ -28,35 +21,64 @@ class UserRole(str, enum.Enum):
 	PATIENT = "patient"
 	ADMIN = "admin"
 
->>>>>>> eb4bca5fd250439bdacfdbe5808e7806157bdf67
 
 class User(Base):
 	__tablename__ = "users"
 
-<<<<<<< HEAD
-	id: Mapped[int] = mapped_column(primary_key=True, index=True)
-	google_sub: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-	email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-	name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-	picture: Mapped[str | None] = mapped_column(String(500), nullable=True)
-	email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-=======
-	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-	email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-	password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
-	google_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
-	name: Mapped[str] = mapped_column(String, nullable=False)
+	id: Mapped[uuid.UUID] = mapped_column(
+		UUID(as_uuid=True),
+		primary_key=True,
+		default=uuid.uuid4,
+	)
+	email: Mapped[str] = mapped_column(
+		String,
+		unique=True,
+		nullable=False,
+	)
+	password_hash: Mapped[str | None] = mapped_column(
+		String,
+		nullable=True,
+	)
+	google_id: Mapped[str | None] = mapped_column(
+		String,
+		unique=True,
+		nullable=True,
+	)
+	name: Mapped[str] = mapped_column(
+		String,
+		nullable=False,
+	)
 	role: Mapped[UserRole] = mapped_column(
-		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=UserRole.PATIENT
+		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]),
+		nullable=False,
+		default=UserRole.PATIENT,
 	)
-	is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-	is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+	is_email_verified: Mapped[bool] = mapped_column(
+		Boolean,
+		nullable=False,
+		default=False,
+	)
+	is_active: Mapped[bool] = mapped_column(
+		Boolean,
+		nullable=False,
+		default=True,
+	)
 	created_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+		DateTime(timezone=True),
+		nullable=False,
+		default=lambda: datetime.now(timezone.utc),
 	)
-	last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	last_login_at: Mapped[datetime | None] = mapped_column(
+		DateTime(timezone=True),
+		nullable=True,
+	)
 
-	medical_cases: Mapped[list["MedicalCase"]] = relationship(back_populates="user")
-	chats: Mapped[list["Chat"]] = relationship(back_populates="user")
-	notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
->>>>>>> eb4bca5fd250439bdacfdbe5808e7806157bdf67
+	medical_cases: Mapped[list["MedicalCase"]] = relationship(
+		back_populates="user",
+	)
+	chats: Mapped[list["Chat"]] = relationship(
+		back_populates="user",
+	)
+	notifications: Mapped[list["Notification"]] = relationship(
+		back_populates="user",
+	)
