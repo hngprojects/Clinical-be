@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
 	DATABASE_URL: PostgresDsn
 
+	# CORS
+	CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
 	# Google OAuth
 	GOOGLE_CLIENT_ID: str = ""
 	GOOGLE_CLIENT_SECRET: str = ""
