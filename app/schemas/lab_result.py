@@ -5,8 +5,15 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
+class FileObject(BaseModel):
+	"""Represents an uploaded file."""
+
+	name: str
+	url: str
+
+
 class LabResultBase(BaseModel):
-	file: dict[str, Any]
+	file: FileObject
 	ocr_status: str
 
 

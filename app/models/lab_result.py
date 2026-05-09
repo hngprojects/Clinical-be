@@ -19,7 +19,7 @@ class LabResult(Base):
 	medical_case_id: Mapped[uuid.UUID] = mapped_column(
 		UUID(as_uuid=True), ForeignKey("medical_cases.id", ondelete="CASCADE"), nullable=False, index=True
 	)
-	file: Mapped[Any] = mapped_column(JSONB, nullable=False)
+	file: Mapped[dict] = mapped_column(JSONB, nullable=False)
 	ocr_status: Mapped[str] = mapped_column(String, nullable=False)
 	extracted_values: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 	ocr_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
