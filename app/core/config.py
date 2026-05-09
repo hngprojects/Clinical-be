@@ -19,6 +19,24 @@ class Settings(BaseSettings):
 
 	CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+	# JWT
+	JWT_SECRET: str
+	JWT_ALGORITHM: str = "HS256"
+	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 60
+
+	# OTP
+	OTP_LENGTH: int = 6
+	OTP_EXPIRES_MINUTES: int = 10
+	OTP_MAX_ATTEMPTS: int = 5
+	OTP_PEPPER: str
+
+	# Resend (email)
+	# When RESEND_API_KEY is empty, the email service logs OTPs to stdout
+	# instead of dispatching real emails. Useful for local dev.
+	RESEND_API_KEY: str = ""
+	RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+	RESEND_FROM_NAME: str = "Clinsights"
+
 
 @lru_cache
 def get_settings() -> Settings:
