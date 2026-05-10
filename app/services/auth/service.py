@@ -1,5 +1,3 @@
-"""High-level orchestration for signup, login, OTP verification, and resend."""
-
 from datetime import datetime, timezone
 
 from sqlalchemy import select

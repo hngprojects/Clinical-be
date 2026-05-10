@@ -1,10 +1,3 @@
-"""OTP generation, hashing, and verification.
-
-Codes are random N-digit numerics. Only a peppered SHA-256 hash is stored.
-On dispatch we invalidate any active OTP of the same purpose for the user
-(consume them) so a single live code per (user, purpose) is enforced.
-"""
-
 import hashlib
 import hmac
 import secrets

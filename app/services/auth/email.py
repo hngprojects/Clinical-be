@@ -1,9 +1,3 @@
-"""Transactional email delivery for auth flows.
-
-Uses Resend when `RESEND_API_KEY` is set; otherwise falls back to logging the
-OTP to stdout (developer convenience for local runs).
-"""
-
 import logging
 
 import resend
