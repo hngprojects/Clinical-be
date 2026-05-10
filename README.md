@@ -52,6 +52,38 @@ find API routes, configuration, migrations, and tests quickly.
 └── README.md
 ```
 
+## Database Setup
+
+To set up your database locally, make sure you have PostgreSQL running. Use the default credentials found in your `.env.example` file to configure your local environment.
+
+1. **Configure PostgreSQL Roles and Permissions**:
+   Connect to your database (e.g., using `psql`) and execute the following commands to ensure proper schema ownership and privileges:
+
+   ```sql
+   ALTER SCHEMA public OWNER TO postgres;
+
+   GRANT ALL ON SCHEMA public TO postgres;
+
+   GRANT CREATE ON SCHEMA public TO postgres;
+
+   GRANT USAGE ON SCHEMA public TO postgres;
+
+   GRANT ALL PRIVILEGES ON DATABASE clinsights TO postgres;
+   ```
+
+2. **Database Migrations (Alembic)**:
+   We use Alembic integrated with `uv` to manage database schema migrations.
+
+   - **Run existing migrations** to update your database to the latest version:
+     ```bash
+     uv run alembic upgrade head
+     ```
+   
+   - **Create a new migration revision** after making changes to your SQLAlchemy models:
+     ```bash
+     uv run alembic revision --autogenerate -m "your_migration_message"
+     ```
+
 ## Contributing
 
 1. Fork the repository and create your feature branch (`git checkout -b feature/your-feature`)
