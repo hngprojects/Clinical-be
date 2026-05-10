@@ -23,7 +23,9 @@ def upgrade() -> None:
 	op.add_column("users", sa.Column("first_name", sa.String(), nullable=True))
 	op.add_column("users", sa.Column("last_name", sa.String(), nullable=True))
 
-	# Backfill: split existing `name` on the first whitespace.
+	# Backfill: split existing `name` on the first whitespace. Single-name rows
+	# get a "-" placeholder for last_name so the NOT NULL alter below succeeds
+	# and `UserBase.last_name` (Field(min_length=1)) can serialize the row.
 	op.execute(
 		"""
 		UPDATE users
@@ -32,7 +34,7 @@ def upgrade() -> None:
 			last_name  = CASE
 				WHEN position(' ' in name) > 0
 					THEN trim(substring(name from position(' ' in name) + 1))
-				ELSE ''
+				ELSE '-'
 			END
 		WHERE first_name IS NULL OR last_name IS NULL
 		"""
