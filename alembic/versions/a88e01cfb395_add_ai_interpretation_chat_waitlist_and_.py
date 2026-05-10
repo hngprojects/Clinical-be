@@ -56,7 +56,13 @@ def upgrade() -> None:
         sa.Column("confidence", sa.Enum("low", "medium", "high", name="confidence"), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("pending", "processing", "complete", "failed", name="interpretationstatus"),
+            sa.Enum(
+                "pending",
+                "processing",
+                "complete",
+                "failed",
+                name="interpretationstatus",
+            ),
             nullable=False,
         ),
         sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
@@ -111,7 +117,11 @@ def upgrade() -> None:
         sa.Column("medical_case_id", sa.UUID(), nullable=True),
         sa.Column(
             "type",
-            sa.Enum("interpretation_ready", "interpretation_failed", name="notificationtype"),
+            sa.Enum(
+                "interpretation_ready",
+                "interpretation_failed",
+                name="notificationtype",
+            ),
             nullable=False,
         ),
         sa.Column("title", sa.String(), nullable=False),
@@ -162,11 +172,16 @@ def downgrade() -> None:
         "medical_case",
         sa.Column("id", sa.UUID(), autoincrement=False, nullable=False),
         sa.Column("user_id", sa.Integer(), autoincrement=False, nullable=True),
-        sa.Column("guest_session_id", sa.VARCHAR(), autoincrement=False, nullable=False),
+        sa.Column("guest_session_id", sa.VARCHAR(), autoincrement=False, nullable=True),
         sa.Column("status", sa.VARCHAR(), autoincrement=False, nullable=False),
         sa.Column("created_at", postgresql.TIMESTAMP(timezone=True), autoincrement=False, nullable=False),
         sa.Column("completed_at", postgresql.TIMESTAMP(timezone=True), autoincrement=False, nullable=True),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], name=op.f("medical_case_user_id_fkey")),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+            name=op.f("medical_case_user_id_fkey"),
+            ondelete="CASCADE",
+        ),
         sa.PrimaryKeyConstraint("id", name=op.f("medical_case_pkey")),
     )
     op.create_index(op.f("ix_medical_case_user_id"), "medical_case", ["user_id"], unique=False)
@@ -192,7 +207,7 @@ def downgrade() -> None:
     op.execute(
         "INSERT INTO medical_case "
         "(id, guest_session_id, status, created_at, completed_at) "
-        "SELECT id, COALESCE(guest_session_id, ''), status, created_at, completed_at "
+        "SELECT id, guest_session_id, status, created_at, completed_at "
         "FROM medical_cases"
     )
 
