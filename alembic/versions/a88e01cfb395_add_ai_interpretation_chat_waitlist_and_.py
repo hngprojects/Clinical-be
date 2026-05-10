@@ -214,7 +214,7 @@ def downgrade() -> None:
     op.execute(
         "INSERT INTO lab_result "
         "(id, medical_case_id, file, ocr_status, extracted_data, ocr_completed_at, created_at) "
-        "SELECT id, medical_case_id, file, ocr_status, COALESCE(extracted_values, '{}'), "
+        "SELECT id, medical_case_id, file, ocr_status, extracted_values, "
         "ocr_completed_at, created_at FROM lab_results"
     )
 
