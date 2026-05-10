@@ -140,7 +140,8 @@ async def authenticate_otp(
 	await session.refresh(user)
 
 	token, ttl_seconds = create_access_token(user.id)
-	return user, token, ttl_seconds
+	refresh_token = await create_refresh_token(user.id, session)
+	return user, token, ttl_seconds, refresh_token
 
 
 async def resend_otp(session: AsyncSession, *, email: str) -> User:

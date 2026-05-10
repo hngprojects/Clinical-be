@@ -30,7 +30,7 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token, refresh_all_tokens
+from app.services.auth.tokens import create_access_token, create_refresh_token, refresh_all_tokens
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
@@ -103,16 +103,27 @@ async def login(payload: LoginRequest, session: DBSession, response: Response) -
 	"/verify-otp",
 	response_model=SuccessResponse[TokenResponse],
 )
-async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessResponse[TokenResponse]:
+async def verify_otp(
+	payload: VerifyOtpRequest, session: DBSession, response: Response
+) -> SuccessResponse[TokenResponse]:
 	"""Verify the email-verification OTP sent after signup.
 
 	Marks the email as verified and returns a JWT so the user is immediately
 	logged in without needing a separate login step.
 	"""
-	user, access_token, ttl_seconds = await authenticate_otp(
+	user, access_token, ttl_seconds, refresh_token = await authenticate_otp(
 		session,
 		email=payload.email,
 		code=payload.code,
+	)
+	settings = get_settings()
+	response.set_cookie(
+		key="refresh_token",
+		value=refresh_token,
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
 	)
 	return SuccessResponse(
 		message="Email verified. Welcome!",
@@ -196,11 +207,12 @@ async def google_login() -> RedirectResponse:
 	return RedirectResponse(url=google_auth_url)
 
 
-@router.get("/google/callback", response_model=SuccessResponse[GoogleAuthData])
+@router.get("/google/callback", response_model=SuccessResponse[TokenResponse])
 async def google_callback(
 	code: str,
 	session: DBSession,
-) -> SuccessResponse[GoogleAuthData]:
+	response: Response,
+) -> SuccessResponse[TokenResponse]:
 	"""Handle the Google OAuth callback and return app tokens."""
 	token_data = await exchange_google_code(code)
 	google_access_token = token_data.get("access_token")
@@ -212,13 +224,23 @@ async def google_callback(
 	user = await get_or_create_google_user(session, google_user)
 
 	app_access_token, ttl_seconds = create_access_token(user.id)
+	refresh_token = await create_refresh_token(user.id, session)
+	settings = get_settings()
+	response.set_cookie(
+		key="refresh_token",
+		value=refresh_token,
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
+	)
 
-	return SuccessResponse[GoogleAuthData](
-		message="Google authentication successful",
-		data=GoogleAuthData(
+	return SuccessResponse(
+		message="Logged in successfully.",
+		data=TokenResponse(
 			access_token=app_access_token,
-			refresh_token=app_access_token,  # Placeholder until refresh tokens are implemented
 			token_type="bearer",
+			expires_in=ttl_seconds,
 			user=UserResponse.model_validate(user),
 		),
 	)
