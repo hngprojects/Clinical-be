@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field, PostgresDsn
+from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 	DATABASE_URL: PostgresDsn
 
 	# CORS
-	CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+	CORS_ORIGINS: list[str]
 
 	# Google OAuth
 	GOOGLE_CLIENT_ID: str = ""
@@ -44,9 +44,18 @@ class Settings(BaseSettings):
 	SMTP_FROM_NAME: str = "Clinsights"
 	ALLOW_STDOUT_EMAIL: bool = False
 
+	@field_validator("SMTP_FROM_EMAIL", mode="after")
+	@classmethod
+	def smtp_from_email_required_when_smtp_enabled(cls, v: str, info: object) -> str:
+		"""Require a non-empty SMTP_FROM_EMAIL when SMTP credentials are configured."""
+		data = getattr(info, "data", {})
+		if data.get("SMTP_USERNAME") and not v:
+			raise ValueError("SMTP_FROM_EMAIL must be set when SMTP_USERNAME is configured")
+		return v
+
 	# Password reset
-	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"
-	EMAIL_FROM: str = "no-reply@clinsights.com"
+	FRONTEND_RESET_PASSWORD_URL: str
+	PASSWORD_RESET_TOKEN_EXPIRES_MINUTES: int = 60
 
 
 @lru_cache
