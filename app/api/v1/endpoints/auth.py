@@ -21,10 +21,10 @@ from app.schemas.auth import (
 from app.schemas.user import UserResponse
 from app.services.auth.service import (
 	authenticate_otp,
+	login_user,
 	otp_ttl_seconds,
 	resend_otp,
 	signup_user,
-	start_login,
 )
 from app.services.auth_service import (
 	create_password_reset,
@@ -44,9 +44,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
 	"""Register a new user and email them a verification OTP.
 
-	Frontend sends `first_name`, `last_name`, `email`. The user is created in
-	an unverified state; they must call `/auth/verify-otp` with the emailed
-	code to activate the account.
+	Frontend sends `first_name`, `last_name`, `email`, and `password`. The user
+	is created in an unverified state; they must call `/auth/verify-otp` with the
+	emailed code to activate the account.
 	"""
 	user = await signup_user(session, payload)
 	return SuccessResponse(
@@ -61,17 +61,17 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 
 @router.post(
 	"/login",
-	response_model=SuccessResponse[OtpDispatchResponse],
+	response_model=SuccessResponse[TokenResponse],
 )
-async def login(payload: LoginRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
-	"""Step 1 of login: send an OTP to the user's email."""
-	user = await start_login(session, email=payload.email)
+async def login(payload: LoginRequest, session: DBSession) -> SuccessResponse[TokenResponse]:
+	"""Authenticate with email/password and issue a JWT."""
+	user, access_token, ttl_seconds = await login_user(session, payload)
 	return SuccessResponse(
-		message="Login code sent to your email.",
-		data=OtpDispatchResponse(
-			email=user.email,
-			purpose=OtpPurpose.LOGIN,
-			expires_in_seconds=otp_ttl_seconds(),
+		message="Authenticated successfully.",
+		data=TokenResponse(
+			access_token=access_token,
+			expires_in=ttl_seconds,
+			user=UserResponse.model_validate(user),
 		),
 	)
 
@@ -81,12 +81,11 @@ async def login(payload: LoginRequest, session: DBSession) -> SuccessResponse[Ot
 	response_model=SuccessResponse[TokenResponse],
 )
 async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessResponse[TokenResponse]:
-	"""Step 2: verify the OTP. Marks email verified for signup, then issues a JWT."""
+	"""Verify the signup OTP, mark email verified, then issue a JWT."""
 	user, access_token, ttl_seconds = await authenticate_otp(
 		session,
 		email=payload.email,
 		code=payload.code,
-		purpose=payload.purpose,
 	)
 	return SuccessResponse(
 		message="Authenticated successfully.",
@@ -103,13 +102,13 @@ async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessRe
 	response_model=SuccessResponse[OtpDispatchResponse],
 )
 async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
-	"""Re-send an OTP for the given purpose (signup verification or login)."""
-	user = await resend_otp(session, email=payload.email, purpose=payload.purpose)
+	"""Re-send an email-verification OTP."""
+	user = await resend_otp(session, email=payload.email)
 	return SuccessResponse(
 		message="A new code has been sent to your email.",
 		data=OtpDispatchResponse(
 			email=user.email,
-			purpose=payload.purpose,
+			purpose=OtpPurpose.EMAIL_VERIFICATION,
 			expires_in_seconds=otp_ttl_seconds(),
 		),
 	)

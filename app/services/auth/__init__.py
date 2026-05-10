@@ -5,15 +5,15 @@ from app.services.auth.otp import (
 )
 from app.services.auth.service import (
 	authenticate_otp,
+	login_user,
 	resend_otp,
 	signup_user,
-	start_login,
 )
 from app.services.auth.tokens import create_access_token, decode_access_token
 
 __all__ = [
 	"signup_user",
-	"start_login",
+	"login_user",
 	"authenticate_otp",
 	"resend_otp",
 	"create_otp_for_user",

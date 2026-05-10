@@ -11,14 +11,12 @@ logger = logging.getLogger(__name__)
 
 _PURPOSE_SUBJECTS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: "Verify your email",
-	OtpPurpose.LOGIN: "Your login code",
 }
 
 _PURPOSE_INTROS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: (
 		"Welcome to Clinsights! Use the code below to verify your email and finish creating your account."
 	),
-	OtpPurpose.LOGIN: "Use the code below to sign in to Clinsights.",
 }
 
 
@@ -53,6 +51,9 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 
 def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
 	"""Send the OTP to the user via Resend (or log it in dev mode)."""
+	if purpose is not OtpPurpose.EMAIL_VERIFICATION:
+		raise ValueError("OTP email is only supported for email verification.")
+
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
 	subject = _PURPOSE_SUBJECTS[purpose]
 	html_body = _render_html(first_name, code, purpose, expires_minutes)
