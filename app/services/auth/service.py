@@ -16,7 +16,7 @@ from app.services.auth.otp import (
 	create_otp_for_user,
 	verify_otp_for_user,
 )
-from app.services.auth.tokens import create_access_token, create_refresh_token
+from app.services.auth.tokens import create_access_token, create_refresh_token, revoke_all_refresh_tokens
 
 
 async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
@@ -101,7 +101,7 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	user.last_login_at = now
 	await session.commit()
 	await session.refresh(user)
-
+	await revoke_all_refresh_tokens(user.id, session)
 	token, ttl_seconds = create_access_token(user.id)
 	refresh_token = await create_refresh_token(user.id, session)
 	return user, token, ttl_seconds, refresh_token

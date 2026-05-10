@@ -18,7 +18,6 @@ from app.schemas.auth import (
 	ResendOtpRequest,
 	ResetPasswordRequest,
 	SignupRequest,
-	TokenPair,
 	TokenResponse,
 	VerifyOtpRequest,
 )
@@ -68,9 +67,9 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 
 @router.post(
 	"/login",
-	response_model=SuccessResponse[TokenPair],
+	response_model=SuccessResponse[TokenResponse],
 )
-async def login(payload: LoginRequest, session: DBSession, response: Response) -> SuccessResponse[TokenPair]:
+async def login(payload: LoginRequest, session: DBSession, response: Response) -> SuccessResponse[TokenResponse]:
 	"""Authenticate with email + password. Returns a JWT on success.
 
 	The account must have a verified email before login is permitted.
@@ -79,14 +78,7 @@ async def login(payload: LoginRequest, session: DBSession, response: Response) -
 		session, email=payload.email, password=payload.password
 	)
 	settings = get_settings()
-	response.set_cookie(
-		key="access_token",
-		value=access_token,
-		httponly=True,
-		secure=settings.COOKIE_SECURE,
-		samesite=settings.COOKIE_SAMESITE,
-		max_age=settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
-	)
+
 	response.set_cookie(
 		key="refresh_token",
 		value=refresh_token,
@@ -97,10 +89,11 @@ async def login(payload: LoginRequest, session: DBSession, response: Response) -
 	)
 	return SuccessResponse(
 		message="Logged in successfully.",
-		data=TokenPair(
+		data=TokenResponse(
 			access_token=access_token,
-			refresh_token=refresh_token,
 			token_type="bearer",
+			expires_in=ttl_seconds,
+			user=UserResponse.model_validate(user),
 		),
 	)
 
@@ -230,23 +223,16 @@ async def google_callback(
 	)
 
 
-@router.get("/refresh-tokens", response_model=SuccessResponse[TokenPair])
+@router.get("/refresh-tokens", response_model=SuccessResponse[TokenResponse])
 async def refresh(
 	session: DBSession,
 	response: Response,
-	refresh_token: Annotated[str | None, Cookie()] = None,
-) -> SuccessResponse[TokenPair]:
+	refresh_token: Annotated[str, Cookie()],
+) -> SuccessResponse[TokenResponse]:
 	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
 
 	settings = get_settings()
-	response.set_cookie(
-		key="access_token",
-		value=tokens["access_token"],
-		httponly=True,
-		secure=settings.COOKIE_SECURE,
-		samesite=settings.COOKIE_SAMESITE,
-		max_age=settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
-	)
+
 	response.set_cookie(
 		key="refresh_token",
 		value=tokens["refresh_token"],
@@ -257,9 +243,9 @@ async def refresh(
 	)
 	return SuccessResponse(
 		message="Tokens refreshed",  # or any string you use elsewhere
-		data=TokenPair(
+		data=TokenResponse(
 			access_token=tokens["access_token"],
-			refresh_token=tokens["refresh_token"],
 			token_type="bearer",
+			expires_in=tokens["expires_in"],
 		),
 	)

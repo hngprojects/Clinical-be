@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -104,6 +104,11 @@ async def revoke_refresh_token(token: str, session: AsyncSession) -> RefreshToke
 	return row
 
 
+async def revoke_all_refresh_tokens(user_id: UUID, session: AsyncSession) -> None:
+	await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+	await session.commit()
+
+
 async def refresh_all_tokens(*, session: AsyncSession, refresh_token: str) -> dict:
 	payload = decode_refresh_token(refresh_token)
 	user_id = payload.get("sub")
@@ -113,7 +118,7 @@ async def refresh_all_tokens(*, session: AsyncSession, refresh_token: str) -> di
 	if not user:
 		raise UnauthorizedError(message="User not found")
 	await revoke_refresh_token(refresh_token, session)
-	access_token, _ = create_access_token(user.id)
+	token, ttl_seconds = create_access_token(user.id)
 	new_refresh = await create_refresh_token(user.id, session)
 
-	return {"access_token": access_token, "refresh_token": new_refresh}
+	return {"access_token": token, "refresh_token": new_refresh, "expires_in": ttl_seconds}

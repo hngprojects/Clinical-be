@@ -54,7 +54,7 @@ class TokenResponse(BaseModel):
 	access_token: str
 	token_type: str = "bearer"
 	expires_in: int
-	user: UserResponse
+	user: UserResponse | None = None
 
 	model_config = ConfigDict(from_attributes=True)
 
