@@ -2,7 +2,7 @@ import asyncio
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Cookie, HTTPException, Request, status
+from fastapi import APIRouter, Cookie, HTTPException, status
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 
