@@ -32,5 +32,18 @@ def create_access_token(
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-	"""Decode and validate a JWT. Raises `jwt.PyJWTError` on failure."""
-	return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+	"""Decode and validate an access JWT. Raises `jwt.PyJWTError` on failure.
+
+	Requires `exp`, `sub`, and `type` claims and rejects any token whose
+	`type` is not exactly `"access"` so future refresh / verification /
+	password-reset tokens signed with the same secret cannot be reused here.
+	"""
+	payload = jwt.decode(
+		token,
+		settings.JWT_SECRET,
+		algorithms=[settings.JWT_ALGORITHM],
+		options={"require": ["exp", "sub", "type"]},
+	)
+	if payload.get("type") != "access":
+		raise jwt.InvalidTokenError("Token is not an access token")
+	return payload
