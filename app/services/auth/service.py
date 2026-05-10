@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
+from app.core.security import hash_password, verify_password
 from app.models.otp import OtpPurpose
 from app.models.user import User, UserRole
 from app.schemas.auth import SignupRequest
@@ -24,11 +25,11 @@ async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
 
 
 async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
-	"""Create an unverified user and send an email-verification OTP.
+	"""Create an unverified user (with hashed password) and send an email-verification OTP.
 
 	If a user already exists for the email:
-	- and is verified, raises 409 Conflict.
-	- and is NOT verified, reuses the row, refreshes names, and re-sends OTP.
+	- and is verified → raises 409 Conflict.
+	- and is NOT verified → reuses the row, refreshes the password, and re-sends OTP.
 	"""
 	email = payload.email.strip().lower()
 	existing = await _get_user_by_email(session, email)
@@ -36,6 +37,8 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 	if existing is not None:
 		if existing.is_email_verified:
 			raise ConflictError("An account with this email already exists.")
+		# Unverified: allow re-signup (e.g. user forgot they signed up, or OTP expired)
+		existing.password_hash = hash_password(payload.password)
 		existing.first_name = payload.first_name.strip()
 		existing.last_name = payload.last_name.strip()
 		user = existing
@@ -44,6 +47,7 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 			email=email,
 			first_name=payload.first_name.strip(),
 			last_name=payload.last_name.strip(),
+			password_hash=hash_password(payload.password),
 			role=UserRole.PATIENT,
 			is_email_verified=False,
 			is_active=True,
@@ -55,36 +59,42 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 	await session.commit()
 	await session.refresh(user)
 
-	send_otp_email(
+	await send_otp_email(
 		to_email=user.email,
-		first_name=user.first_name,
+		first_name=user.first_name or user.email.split("@")[0],
 		code=code,
 		purpose=OtpPurpose.EMAIL_VERIFICATION,
 	)
 	return user
 
 
-async def start_login(session: AsyncSession, *, email: str) -> User:
-	"""Issue a login OTP for an existing, verified user."""
+async def authenticate_credentials(session: AsyncSession, *, email: str, password: str) -> tuple[User, str, int]:
+	"""Verify email + password and return (user, access_token, ttl_seconds).
+
+	Raises:
+	    NotFoundError: if the email is not registered.
+	    ForbiddenError: if the account is inactive or email is unverified.
+	    UnauthorizedError: if the password is wrong.
+	"""
 	user = await _get_user_by_email(session, email)
 	if user is None:
 		raise NotFoundError("No account found for this email.")
 	if not user.is_active:
 		raise ForbiddenError("This account is disabled.")
 	if not user.is_email_verified:
-		raise ForbiddenError("Email not verified yet. Finish signup by entering the verification code we sent you.")
+		raise ForbiddenError(
+			"Email not verified. Check your inbox for the verification code we sent during signup."
+		)
+	if not user.password_hash or not verify_password(password, user.password_hash):
+		raise UnauthorizedError("Incorrect email or password.")
 
-	_, code = await create_otp_for_user(session, user_id=user.id, purpose=OtpPurpose.LOGIN)
+	now = datetime.now(timezone.utc)
+	user.last_login_at = now
 	await session.commit()
 	await session.refresh(user)
 
-	send_otp_email(
-		to_email=user.email,
-		first_name=user.first_name,
-		code=code,
-		purpose=OtpPurpose.LOGIN,
-	)
-	return user
+	token, ttl_seconds = create_access_token(user.id)
+	return user, token, ttl_seconds
 
 
 async def authenticate_otp(
@@ -92,11 +102,10 @@ async def authenticate_otp(
 	*,
 	email: str,
 	code: str,
-	purpose: OtpPurpose,
 ) -> tuple[User, str, int]:
-	"""Verify an OTP and return (user, access_token, ttl_seconds).
+	"""Verify an email-verification OTP and return (user, access_token, ttl_seconds).
 
-	For `EMAIL_VERIFICATION` purpose this also flips `is_email_verified=True`.
+	Flips `is_email_verified=True` on success.
 	"""
 	user = await _get_user_by_email(session, email)
 	if user is None:
@@ -105,14 +114,15 @@ async def authenticate_otp(
 		raise ForbiddenError("This account is disabled.")
 
 	try:
-		await verify_otp_for_user(session, user_id=user.id, purpose=purpose, code=code)
+		# NOTE: verify_otp_for_user commits the `attempts` increment on failure
+		# inside the same transaction — do not roll back after this call.
+		await verify_otp_for_user(session, user_id=user.id, purpose=OtpPurpose.EMAIL_VERIFICATION, code=code)
 	except OtpVerificationError as exc:
 		await session.commit()
 		raise UnauthorizedError(str(exc)) from exc
 
 	now = datetime.now(timezone.utc)
-	if purpose is OtpPurpose.EMAIL_VERIFICATION:
-		user.is_email_verified = True
+	user.is_email_verified = True
 	user.last_login_at = now
 
 	await session.commit()
@@ -122,33 +132,25 @@ async def authenticate_otp(
 	return user, token, ttl_seconds
 
 
-async def resend_otp(
-	session: AsyncSession,
-	*,
-	email: str,
-	purpose: OtpPurpose,
-) -> User:
-	"""Re-issue an OTP for the given purpose."""
+async def resend_otp(session: AsyncSession, *, email: str) -> User:
+	"""Re-issue an email-verification OTP."""
 	user = await _get_user_by_email(session, email)
 	if user is None:
 		raise NotFoundError("No account found for this email.")
 	if not user.is_active:
 		raise ForbiddenError("This account is disabled.")
-
-	if purpose is OtpPurpose.LOGIN and not user.is_email_verified:
-		raise ForbiddenError("Email not verified yet. Finish signup by entering the verification code we sent you.")
-	if purpose is OtpPurpose.EMAIL_VERIFICATION and user.is_email_verified:
+	if user.is_email_verified:
 		raise ConflictError("Email is already verified. Use login instead.")
 
-	_, code = await create_otp_for_user(session, user_id=user.id, purpose=purpose)
+	_, code = await create_otp_for_user(session, user_id=user.id, purpose=OtpPurpose.EMAIL_VERIFICATION)
 	await session.commit()
 	await session.refresh(user)
 
-	send_otp_email(
+	await send_otp_email(
 		to_email=user.email,
-		first_name=user.first_name,
+		first_name=user.first_name or user.email.split("@")[0],
 		code=code,
-		purpose=purpose,
+		purpose=OtpPurpose.EMAIL_VERIFICATION,
 	)
 	return user
 

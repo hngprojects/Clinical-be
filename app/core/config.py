@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import PostgresDsn
+from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 	CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
 	# JWT
-	JWT_SECRET: str
+	JWT_SECRET: str = Field(min_length=32)
 	JWT_ALGORITHM: str = "HS256"
 	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 60
 
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 	OTP_LENGTH: int = 6
 	OTP_EXPIRES_MINUTES: int = 10
 	OTP_MAX_ATTEMPTS: int = 5
-	OTP_PEPPER: str
+	OTP_PEPPER: str = Field(min_length=32)
 
 	# Resend (email)
 	# When RESEND_API_KEY is empty, the OTP email service logs codes to stdout

@@ -1,3 +1,4 @@
+import asyncio
 import html
 import logging
 
@@ -51,7 +52,7 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 	)
 
 
-def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
+async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
 	"""Send the OTP to the user via Resend (or log it in dev mode)."""
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
 	subject = _PURPOSE_SUBJECTS[purpose]
@@ -74,14 +75,15 @@ def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPur
 		else settings.RESEND_FROM_EMAIL
 	)
 	try:
-		resend.Emails.send(
+		await asyncio.to_thread(
+			resend.Emails.send,
 			{
 				"from": from_address,
 				"to": [to_email],
 				"subject": subject,
 				"html": html_body,
 				"text": text,
-			}
+			},
 		)
 	except Exception:
 		logger.exception("Failed to send OTP email to %s (purpose=%s)", to_email, purpose.value)
