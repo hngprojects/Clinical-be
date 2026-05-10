@@ -72,9 +72,9 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	"""Verify email + password and return (user, access_token, ttl_seconds).
 
 	Raises:
-	    NotFoundError: if the email is not registered.
-	    ForbiddenError: if the account is inactive or email is unverified.
-	    UnauthorizedError: if the password is wrong.
+		NotFoundError: if the email is not registered.
+		ForbiddenError: if the account is inactive or email is unverified.
+		UnauthorizedError: if the password is wrong.
 	"""
 	user = await _get_user_by_email(session, email)
 	if user is None:
@@ -82,9 +82,7 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	if not user.is_active:
 		raise ForbiddenError("This account is disabled.")
 	if not user.is_email_verified:
-		raise ForbiddenError(
-			"Email not verified. Check your inbox for the verification code we sent during signup."
-		)
+		raise ForbiddenError("Email not verified. Check your inbox for the verification code we sent during signup.")
 	if not user.password_hash or not verify_password(password, user.password_hash):
 		raise UnauthorizedError("Incorrect email or password.")
 

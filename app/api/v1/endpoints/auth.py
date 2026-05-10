@@ -2,7 +2,6 @@ from fastapi import APIRouter, status
 
 from app.api.deps import CurrentUser, DBSession
 from app.core.responses import SuccessResponse
-from app.models.otp import OtpPurpose
 from app.schemas.auth import (
 	ForgotPasswordRequest,
 	LoginRequest,
