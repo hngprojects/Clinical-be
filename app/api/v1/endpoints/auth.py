@@ -2,6 +2,7 @@ from fastapi import APIRouter, status
 
 from app.api.deps import CurrentUser, DBSession
 from app.core.responses import SuccessResponse
+from app.models.otp import OtpPurpose
 from app.schemas.auth import (
 	LoginRequest,
 	OtpDispatchResponse,
@@ -39,7 +40,7 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 		message="Verification code sent to your email.",
 		data=OtpDispatchResponse(
 			email=user.email,
-			purpose="email_verification",  # type: ignore[arg-type]
+			purpose=OtpPurpose.EMAIL_VERIFICATION,
 			expires_in_seconds=otp_ttl_seconds(),
 		),
 	)
@@ -56,7 +57,7 @@ async def login(payload: LoginRequest, session: DBSession) -> SuccessResponse[Ot
 		message="Login code sent to your email.",
 		data=OtpDispatchResponse(
 			email=user.email,
-			purpose="login",  # type: ignore[arg-type]
+			purpose=OtpPurpose.LOGIN,
 			expires_in_seconds=otp_ttl_seconds(),
 		),
 	)
