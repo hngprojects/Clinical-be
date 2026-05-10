@@ -13,7 +13,6 @@ from app.core.responses import SuccessResponse
 from app.models.user import User
 from app.schemas.auth import (
 	ForgotPasswordRequest,
-	GoogleAuthData,
 	LoginRequest,
 	OtpDispatchResponse,
 	ResendOtpRequest,
