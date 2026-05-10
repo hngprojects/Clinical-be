@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -42,12 +43,18 @@ async def test_join_waitlist(client: AsyncClient) -> None:
 	app.dependency_overrides[get_session] = override_get_session
 
 	test_email = f"test_{uuid.uuid4()}@example.com"
-	response = await client.post(
-		"/api/v1/waitlist/",
-		json={"email": test_email},
-	)
+	with patch("app.api.v1.endpoints.waitlist.send_waitlist_email", new_callable=AsyncMock) as mock_send_email:
+		response = await client.post(
+			"/api/v1/waitlist/",
+			json={"email": test_email},
+		)
+		mock_send_email.assert_called_once_with(test_email)
+
 	assert response.status_code == 200, response.text
-	data = response.json()
+	json_data = response.json()
+	assert json_data["status"] == "success"
+	assert json_data["message"] == "Successfully joined the waitlist"
+	data = json_data["data"]
 	assert data["email"] == test_email
 	assert "id" in data
 	assert "created_at" in data
@@ -59,7 +66,8 @@ async def test_join_waitlist_duplicate(client: AsyncClient) -> None:
 	class IntegrityMockSession(MockSession):
 		def add(self, obj):
 			# Original code raised IntegrityError with 3 args
-			raise IntegrityError("mock", "mock", "mock")
+			# Simulate a Postgres unique constraint error string
+			raise IntegrityError("mock", "mock", Exception("duplicate key value violates unique constraint 'waitlist_email_key'"))
 
 	async def override_get_session_fail():
 		yield IntegrityMockSession()
@@ -71,14 +79,9 @@ async def test_join_waitlist_duplicate(client: AsyncClient) -> None:
 		json={"email": test_email},
 	)
 	
-	if response.status_code != 400:
-		print("FAILED RESPONSE JSON:", response.json())
-	
+
 	assert response.status_code == 400, response.text
 	
 	json_resp = response.json()
-	if "detail" not in json_resp:
-		print("JSON DOES NOT HAVE DETAIL:", json_resp)
-		
-	assert json_resp["message"] == "Email already in waitlist" if "message" in json_resp else json_resp["detail"] == "Email already in waitlist"
+	assert json_resp["message"] == "Email already in waitlist"
 

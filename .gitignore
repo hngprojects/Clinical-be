@@ -27,3 +27,5 @@ temp_interactive_push.bat
 
 docker-compose.yml
 signup-login-flow.md
+.venv2
+.venv
