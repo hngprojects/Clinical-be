@@ -80,6 +80,9 @@ async def verify_otp_for_user(
 	"""
 	now = datetime.now(timezone.utc)
 
+	# Lock the row for the rest of this transaction so concurrent verify
+	# requests cannot both read the same `attempts` value and lose increments,
+	# which would otherwise let an attacker bypass `OTP_MAX_ATTEMPTS`.
 	result = await session.execute(
 		select(OtpCode)
 		.where(
@@ -89,6 +92,7 @@ async def verify_otp_for_user(
 		)
 		.order_by(OtpCode.created_at.desc())
 		.limit(1)
+		.with_for_update()
 	)
 	otp = result.scalar_one_or_none()
 
