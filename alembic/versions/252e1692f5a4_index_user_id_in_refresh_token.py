@@ -1,4 +1,4 @@
-"""index user id in refresh token
+"""Unique indexes for token hashes and users.email (`ix_refresh_tokens_user_id` lives in d8e9).
 
 Revision ID: 252e1692f5a4
 Revises: d8e9f01234ab
@@ -23,7 +23,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_password_reset_tokens_token_hash'), 'password_reset_tokens', ['token_hash'], unique=True)
     op.drop_constraint(op.f('refresh_tokens_token_hash_key'), 'refresh_tokens', type_='unique')
     op.create_index(op.f('ix_refresh_tokens_token_hash'), 'refresh_tokens', ['token_hash'], unique=True)
-    op.create_index(op.f('ix_refresh_tokens_user_id'), 'refresh_tokens', ['user_id'], unique=False)
     op.drop_constraint(op.f('users_email_key'), 'users', type_='unique')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -35,7 +34,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=False)
     op.create_unique_constraint(op.f('users_email_key'), 'users', ['email'], postgresql_nulls_not_distinct=False)
-    op.drop_index(op.f('ix_refresh_tokens_user_id'), table_name='refresh_tokens')
     op.drop_index(op.f('ix_refresh_tokens_token_hash'), table_name='refresh_tokens')
     op.create_unique_constraint(op.f('refresh_tokens_token_hash_key'), 'refresh_tokens', ['token_hash'], postgresql_nulls_not_distinct=False)
     op.drop_index(op.f('ix_password_reset_tokens_token_hash'), table_name='password_reset_tokens')
