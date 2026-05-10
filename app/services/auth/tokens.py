@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 import jwt
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -63,6 +63,11 @@ def decode_access_token(token: str) -> dict[str, Any]:
 
 
 async def create_refresh_token(user_id: UUID, session: AsyncSession) -> str:
+	"""Persist a new refresh JWT and store its SHA-256 hash for `user_id`.
+
+	Commits nothing; callers should `flush`/`commit` (or wrap in `session.begin()`).
+	Returns the raw JWT string for the client.
+	"""
 	now = datetime.now(timezone.utc)
 	settings = get_settings()
 	payload = {
@@ -78,11 +83,12 @@ async def create_refresh_token(user_id: UUID, session: AsyncSession) -> str:
 		expires_at=now + timedelta(minutes=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES),
 	)
 	session.add(refresh_token)
-	await session.commit()
+	await session.flush()
 	return token
 
 
 def decode_refresh_token(token: str) -> dict[str, Any]:
+	"""Decode a refresh JWT. Raises `jwt.InvalidTokenError` when `type` is not `refresh`."""
 	settings = get_settings()
 	payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
 	if payload.get("type") != "refresh":
@@ -91,34 +97,47 @@ def decode_refresh_token(token: str) -> dict[str, Any]:
 
 
 async def revoke_refresh_token(token: str, session: AsyncSession) -> RefreshToken:
-	"""Look up by token_hash; session.get(RefreshToken, <hash>) would wrongly use PK id (UUID)."""
+	"""Mark the refresh row matching ``token``'s hash as revoked (idempotent-ish).
+
+	Issues an ``UPDATE … WHERE token_hash … AND NOT is_revoked``. Does not commit.
+	Raises ``UnauthorizedError`` if no eligible row existed (unknown or already revoked token).
+	"""
 	h = hash_opaque_token(token)
-	result = await session.execute(select(RefreshToken).where(RefreshToken.token_hash == h))
-	row = result.scalar_one_or_none()
-	if row is None:
-		raise UnauthorizedError(message="Refresh token not found")
-	if row.is_revoked:
-		raise UnauthorizedError(message="Refresh token has been revoked")
-	row.is_revoked = True
-	await session.commit()
-	return row
+	result = await session.execute(
+		update(RefreshToken)
+		.where(
+			RefreshToken.token_hash == h,
+			RefreshToken.is_revoked.is_(False),
+		)
+		.values(is_revoked=True)
+		.returning(RefreshToken.id)
+	)
+	if result.scalar_one_or_none() is None:
+		raise UnauthorizedError(message="Refresh token not found or already revoked")
 
 
-async def revoke_all_refresh_tokens(user_id: UUID, session: AsyncSession) -> None:
+async def delete_refresh_token(user_id: UUID, session: AsyncSession) -> None:
+	"""Delete refresh token for `user_id`"""
 	await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 	await session.commit()
 
 
 async def refresh_all_tokens(*, session: AsyncSession, refresh_token: str) -> dict:
+	"""Validate `refresh_token`, revoke it in-DB, return new access + refresh JWT payload dict.
+	On success returns keys `access_token`, `refresh_token`, and `expires_in` (TTL seconds).
+	Uses a nested transaction via `session.begin()` for revoke + mint.
+	"""
 	payload = decode_refresh_token(refresh_token)
 	user_id = payload.get("sub")
 	if not user_id:
 		raise UnauthorizedError(message="Invalid refresh token")
-	user = await session.get(User, UUID(user_id))
-	if not user:
-		raise UnauthorizedError(message="User not found")
-	await revoke_refresh_token(refresh_token, session)
-	token, ttl_seconds = create_access_token(user.id)
-	new_refresh = await create_refresh_token(user.id, session)
+	async with session.begin():
+		user = await session.get(User, UUID(user_id))
+		if not user:
+			raise UnauthorizedError(message="User not found")
+		await revoke_refresh_token(refresh_token, session)
+		token, ttl_seconds = create_access_token(user.id)
+		new_refresh = await create_refresh_token(user.id, session)
+		await session.commit()
 
 	return {"access_token": token, "refresh_token": new_refresh, "expires_in": ttl_seconds}

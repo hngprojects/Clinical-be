@@ -223,12 +223,13 @@ async def google_callback(
 	)
 
 
-@router.get("/refresh-tokens", response_model=SuccessResponse[TokenResponse])
+@router.post("/refresh-tokens", response_model=SuccessResponse[TokenResponse])
 async def refresh(
 	session: DBSession,
 	response: Response,
 	refresh_token: Annotated[str, Cookie()],
 ) -> SuccessResponse[TokenResponse]:
+	"""Refresh the access and refresh tokens."""
 	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
 
 	settings = get_settings()
