@@ -5,7 +5,8 @@ from app.models.chat import Chat
 from app.models.lab_result import LabResult
 from app.models.medical_case import MedicalCase
 from app.models.notification import Notification
-from app.models.user import User
+from app.models.otp import OtpCode, OtpPurpose
+from app.models.user import User, UserRole
 from app.models.waitlist import Waitlist
 
 __all__ = [
@@ -16,6 +17,9 @@ __all__ = [
 	"LabResult",
 	"MedicalCase",
 	"Notification",
+	"OtpCode",
+	"OtpPurpose",
 	"User",
+	"UserRole",
 	"Waitlist",
 ]

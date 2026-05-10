@@ -1,54 +1,51 @@
-import uuid
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer
-from fastapi.security.http import HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-from sqlalchemy import select
+import jwt
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.exceptions import UnauthorizedError
 from app.db.session import get_session
 from app.models.user import User
+from app.services.auth.tokens import decode_access_token
 
 DBSession = Annotated[AsyncSession, Depends(get_session)]
 
-oauth2_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-	credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
-	db: AsyncSession = Depends(get_session),
-):
-	token = credentials.credentials
-
-	credentials_exception = HTTPException(
-		status_code=status.HTTP_401_UNAUTHORIZED,
-		detail="Could not validate credentials",
-	)
+	session: DBSession,
+	credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> User:
+	"""Resolve the authenticated user from a Bearer JWT."""
+	if credentials is None or credentials.scheme.lower() != "bearer":
+		raise UnauthorizedError("Missing or invalid Authorization header.")
 
 	try:
-		payload = jwt.decode(
-			token,
-			settings.SECRET_KEY,
-			algorithms=[settings.ALGORITHM],
-		)
+		payload = decode_access_token(credentials.credentials)
+	except jwt.ExpiredSignatureError as exc:
+		raise UnauthorizedError("Token has expired.") from exc
+	except jwt.PyJWTError as exc:
+		raise UnauthorizedError("Invalid authentication token.") from exc
 
-		user_id = payload.get("sub")
+	subject = payload.get("sub")
+	if not subject:
+		raise UnauthorizedError("Invalid authentication token.")
 
-		if user_id is None:
-			raise credentials_exception
+	try:
+		user_id = UUID(str(subject))
+	except ValueError as exc:
+		raise UnauthorizedError("Invalid authentication token.") from exc
 
-		user_uuid = uuid.UUID(user_id)
-
-	except (JWTError, ValueError):
-		raise credentials_exception
-
-	result = await db.execute(select(User).where(User.id == user_uuid))
-	user = result.scalar_one_or_none()
-
-	if user is None:
-		raise credentials_exception
-
+	user = await session.get(User, user_id)
+	if user is None or not user.is_active:
+		raise UnauthorizedError("User not found or disabled.")
+	if not user.is_email_verified:
+		raise UnauthorizedError("Email address not verified.")
 	return user
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]

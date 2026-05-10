@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.models.user import User
 
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -11,6 +11,7 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 
 async def exchange_google_code(code: str) -> dict:
+	settings = get_settings()
 	payload = {
 		"code": code,
 		"client_id": settings.GOOGLE_CLIENT_ID,
@@ -55,7 +56,14 @@ async def get_or_create_google_user(
 	google_id = google_user.get("sub")
 	email = google_user.get("email")
 	email_verified = google_user.get("email_verified", False)
-	name = google_user.get("name") or email
+	given_name = google_user.get("given_name") or ""
+	family_name = google_user.get("family_name") or ""
+	# Fallback: split name if given_name/family_name not provided
+	if not given_name:
+		full = google_user.get("name") or email or ""
+		parts = full.split(" ", 1)
+		given_name = parts[0]
+		family_name = parts[1] if len(parts) > 1 else given_name
 
 	if not google_id or not email:
 		raise HTTPException(
@@ -74,7 +82,8 @@ async def get_or_create_google_user(
 
 	if user:
 		user.email = email
-		user.name = name
+		user.first_name = given_name
+		user.last_name = family_name
 		user.is_email_verified = True
 		await db.commit()
 		await db.refresh(user)
@@ -92,7 +101,8 @@ async def get_or_create_google_user(
 	user = User(
 		google_id=google_id,
 		email=email,
-		name=name,
+		first_name=given_name,
+		last_name=family_name,
 		is_email_verified=True,
 	)
 
