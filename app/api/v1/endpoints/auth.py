@@ -33,7 +33,7 @@ from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
-from app.services.email import send_password_reset_email
+from app.services.email_service import send_password_reset_email
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
