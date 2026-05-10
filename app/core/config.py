@@ -31,11 +31,16 @@ class Settings(BaseSettings):
 	OTP_PEPPER: str
 
 	# Resend (email)
-	# When RESEND_API_KEY is empty, the email service logs OTPs to stdout
-	# instead of dispatching real emails. Useful for local dev.
+	# When RESEND_API_KEY is empty, the OTP email service logs codes to stdout
+	# instead of dispatching real emails. The password-reset email service
+	# raises EmailError in that case.
 	RESEND_API_KEY: str = ""
 	RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 	RESEND_FROM_NAME: str = "Clinsights"
+
+	# Password reset
+	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"
+	EMAIL_FROM: str = "no-reply@clinsights.com"
 
 
 @lru_cache

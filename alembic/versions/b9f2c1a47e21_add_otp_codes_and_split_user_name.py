@@ -1,7 +1,7 @@
 """add otp_codes table and split user.name into first_name/last_name
 
 Revision ID: b9f2c1a47e21
-Revises: aabbb6d8362b
+Revises: b4c7d2e9f01a
 Create Date: 2026-05-09 20:30:00.000000
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 
 revision: str = "b9f2c1a47e21"
-down_revision: Union[str, None] = "aabbb6d8362b"
+down_revision: Union[str, None] = "b4c7d2e9f01a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -5,9 +5,11 @@ from app.schemas.ai_interpretation import (
 	AIInterpretationUpdate,
 )
 from app.schemas.auth import (
+	ForgotPasswordRequest,
 	LoginRequest,
 	OtpDispatchResponse,
 	ResendOtpRequest,
+	ResetPasswordRequest,
 	SignupRequest,
 	TokenResponse,
 	VerifyOtpRequest,
@@ -26,13 +28,16 @@ __all__ = [
 	"GoogleUserCreate",
 	"UserUpdate",
 	"UserResponse",
-	# Auth
+	# Auth (OTP)
 	"SignupRequest",
 	"LoginRequest",
 	"VerifyOtpRequest",
 	"ResendOtpRequest",
 	"TokenResponse",
 	"OtpDispatchResponse",
+	# Auth (password reset)
+	"ForgotPasswordRequest",
+	"ResetPasswordRequest",
 	# MedicalCase
 	"MedicalCaseBase",
 	"MedicalCaseCreate",
