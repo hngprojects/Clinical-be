@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 import jwt
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
