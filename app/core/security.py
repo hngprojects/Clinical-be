@@ -1,37 +1,17 @@
-from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 
-from jose import jwt
-
-from app.core.config import settings
-
-
-def create_access_token(subject: str) -> str:
-	expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-	payload = {
-		"sub": str(subject),
-		"type": "access",
-		"exp": expire,
-	}
-
-	return jwt.encode(
-		payload,
-		settings.SECRET_KEY,
-		algorithm=settings.ALGORITHM,
-	)
+import bcrypt
 
 
-def create_refresh_token(subject: str) -> str:
-	expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+def hash_opaque_token(raw: str) -> str:
+	return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-	payload = {
-		"sub": str(subject),
-		"type": "refresh",
-		"exp": expire,
-	}
 
-	return jwt.encode(
-		payload,
-		settings.SECRET_KEY,
-		algorithm=settings.ALGORITHM,
-	)
+def new_opaque_token() -> str:
+	return secrets.token_urlsafe(32)
+
+
+def hash_password(plain: str) -> str:
+	raw = bcrypt.hashpw(plain.encode("utf-8"), bcrypt.gensalt(rounds=12))
+	return raw.decode("utf-8")

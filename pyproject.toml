@@ -15,6 +15,7 @@ dependencies = [
     "resend>=2.30.0",
     "httpx>=0.28.1",
     "python-jose[cryptography]>=3.5.0",
+    "bcrypt>=5.0.0",
 ]
 
 [dependency-groups]

@@ -4,7 +4,7 @@ from app.schemas.ai_interpretation import (
 	AIInterpretationResponse,
 	AIInterpretationUpdate,
 )
-from app.schemas.auth import GoogleAuthData
+from app.schemas.auth import ForgotPasswordRequest, GoogleAuthData, ResetPasswordRequest
 from app.schemas.chat import ChatBase, ChatCreate, ChatResponse
 from app.schemas.lab_result import LabResultBase, LabResultCreate, LabResultResponse, LabResultUpdate
 from app.schemas.medical_case import MedicalCaseBase, MedicalCaseCreate, MedicalCaseResponse, MedicalCaseUpdate
@@ -18,6 +18,8 @@ __all__ = [
 	# User
 	"UserBase",
 	"UserCreate",
+	"ForgotPasswordRequest",
+	"ResetPasswordRequest",
 	"GoogleUserCreate",
 	"UserUpdate",
 	"UserResponse",

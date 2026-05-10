@@ -25,11 +25,10 @@ class Settings(BaseSettings):
 	GOOGLE_CLIENT_SECRET: str = ""
 	GOOGLE_REDIRECT_URI: str = ""
 
-	# JWT
-	SECRET_KEY: str = "test-secret-key"
-	ALGORITHM: str = "HS256"
-	ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-	REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"
+	EMAIL_FROM: str = "no-reply@clinsights.com"
+
+	RESEND_API_KEY: str | None = None
 
 
 @lru_cache
