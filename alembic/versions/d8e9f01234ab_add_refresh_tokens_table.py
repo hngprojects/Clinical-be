@@ -29,7 +29,16 @@ def upgrade() -> None:
 		sa.PrimaryKeyConstraint("id"),
 		sa.UniqueConstraint("token_hash"),
 	)
+ 
+	op.create_index(
+		op.f("ix_refresh_tokens_user_id"),
+		"refresh_tokens",
+		["user_id"],
+		unique=False,
+	)
+ 
 
 
 def downgrade() -> None:
-	op.drop_table("refresh_tokens")
+    op.drop_index(op.f("ix_refresh_tokens_user_id"), table_name="refresh_tokens")
+    op.drop_table("refresh_tokens")
