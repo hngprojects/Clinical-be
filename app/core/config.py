@@ -31,10 +31,9 @@ class Settings(BaseSettings):
 	OTP_PEPPER: str = Field(min_length=32)
 
 	# Resend (email)
-	# When RESEND_API_KEY is empty, the OTP email service logs codes to stdout
-	# instead of dispatching real emails. The password-reset email service
-	# raises EmailError in that case.
-	RESEND_API_KEY: str = ""
+	# When RESEND_API_KEY is not set, ALLOW_STDOUT_EMAIL must be True to log OTPs to stdout.
+	RESEND_API_KEY: str | None = None
+	ALLOW_STDOUT_EMAIL: bool = False
 	RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 	RESEND_FROM_NAME: str = "Clinsights"
 
@@ -46,6 +45,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
 	return Settings()  # type: ignore[call-arg]
-
-
-settings = get_settings()

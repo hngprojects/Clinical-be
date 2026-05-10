@@ -43,6 +43,8 @@ async def get_current_user(
 	user = await session.get(User, user_id)
 	if user is None or not user.is_active:
 		raise UnauthorizedError("User not found or disabled.")
+	if not user.is_email_verified:
+		raise UnauthorizedError("Email address not verified.")
 	return user
 
 

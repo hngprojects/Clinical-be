@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.models.otp import OtpCode, OtpPurpose
 
 
@@ -19,7 +19,7 @@ def _generate_numeric_code(length: int) -> str:
 
 def _hash_code(code: str) -> str:
 	"""Salt the code with the server-side pepper and hash with SHA-256."""
-	pepper = settings.OTP_PEPPER.encode("utf-8")
+	pepper = get_settings().OTP_PEPPER.encode("utf-8")
 	return hashlib.sha256(pepper + code.encode("utf-8")).hexdigest()
 
 
@@ -50,6 +50,7 @@ async def create_otp_for_user(
 		.values(consumed_at=now)
 	)
 
+	settings = get_settings()
 	code = _generate_numeric_code(settings.OTP_LENGTH)
 	otp = OtpCode(
 		user_id=user_id,
@@ -103,6 +104,7 @@ async def verify_otp_for_user(
 		otp.consumed_at = now
 		raise OtpVerificationError("Code has expired. Request a new one.")
 
+	settings = get_settings()
 	if otp.attempts >= settings.OTP_MAX_ATTEMPTS:
 		otp.consumed_at = now
 		raise OtpVerificationError("Too many incorrect attempts. Request a new code.")

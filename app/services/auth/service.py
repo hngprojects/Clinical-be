@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import hash_password, verify_password
 from app.models.otp import OtpPurpose
@@ -43,17 +44,27 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 		existing.last_name = payload.last_name.strip()
 		user = existing
 	else:
-		user = User(
-			email=email,
-			first_name=payload.first_name.strip(),
-			last_name=payload.last_name.strip(),
-			password_hash=hash_password(payload.password),
-			role=UserRole.PATIENT,
-			is_email_verified=False,
-			is_active=True,
-		)
-		session.add(user)
-		await session.flush()
+		try:
+			user = User(
+				email=email,
+				first_name=payload.first_name.strip(),
+				last_name=payload.last_name.strip(),
+				password_hash=hash_password(payload.password),
+				role=UserRole.PATIENT,
+				is_email_verified=False,
+				is_active=True,
+			)
+			session.add(user)
+			await session.flush()
+		except IntegrityError:
+			await session.rollback()
+			user = await _get_user_by_email(session, email)
+			if user is None or user.is_email_verified:
+				raise ConflictError("An account with this email already exists.")
+			# if not verified, proceed with updating password and resending
+			user.password_hash = hash_password(payload.password)
+			user.first_name = payload.first_name.strip()
+			user.last_name = payload.last_name.strip()
 
 	_, code = await create_otp_for_user(session, user_id=user.id, purpose=OtpPurpose.EMAIL_VERIFICATION)
 	await session.commit()
@@ -154,4 +165,4 @@ async def resend_otp(session: AsyncSession, *, email: str) -> User:
 
 
 def otp_ttl_seconds() -> int:
-	return settings.OTP_EXPIRES_MINUTES * 60
+	return get_settings().OTP_EXPIRES_MINUTES * 60

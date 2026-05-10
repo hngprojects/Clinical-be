@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 
 import resend
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.core.exceptions import EmailError
 
 logger = logging.getLogger(__name__)
@@ -15,9 +15,14 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 
 	Raises EmailError if the API key is not configured or the send fails.
 	"""
+	settings = get_settings()
 	if not settings.RESEND_API_KEY:
-		raise EmailError(message="Email service not configured.")
-	resend.api_key = settings.RESEND_API_KEY
+		if not settings.ALLOW_STDOUT_EMAIL:
+			raise EmailError(message="Email service not configured.")
+		else:
+			logger.info(f"STDOUT EMAIL [Password Reset] -> to: {to_email}, token: {reset_token}")
+			return
+
 	link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?{urlencode({'token': reset_token})}"
 
 	try:

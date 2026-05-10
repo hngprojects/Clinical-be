@@ -4,7 +4,7 @@ import logging
 
 import resend
 
-from app.core.config import settings
+from app.core.config import get_settings
 from app.models.otp import OtpPurpose
 
 logger = logging.getLogger(__name__)
@@ -54,21 +54,28 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 
 async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
 	"""Send the OTP to the user via Resend (or log it in dev mode)."""
+	settings = get_settings()
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
 	subject = _PURPOSE_SUBJECTS[purpose]
 	html_body = _render_html(first_name, code, purpose, expires_minutes)
 	text = _render_text(first_name, code, purpose, expires_minutes)
 
 	if not settings.RESEND_API_KEY:
-		logger.warning(
-			"RESEND_API_KEY not set; logging OTP for %s (purpose=%s): %s",
-			to_email,
-			purpose.value,
-			code,
-		)
+		if settings.ALLOW_STDOUT_EMAIL:
+			logger.info(
+				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: %s",
+				to_email,
+				purpose.value,
+				code,
+			)
+		else:
+			logger.warning(
+				"RESEND_API_KEY not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) failed.",
+				to_email,
+				purpose.value,
+			)
 		return
 
-	resend.api_key = settings.RESEND_API_KEY
 	from_address = (
 		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
 		if settings.RESEND_FROM_NAME
