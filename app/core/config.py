@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 	DATABASE_URL: PostgresDsn
 
 	# CORS
-	CORS_ORIGINS: list[str]
+	CORS_ORIGINS: list[str] = Field(default_factory=list)
 
 	# Google OAuth
 	GOOGLE_CLIENT_ID: str = ""
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 		return v
 
 	# Password reset
-	FRONTEND_RESET_PASSWORD_URL: str
+	FRONTEND_RESET_PASSWORD_URL: str = ""
 	PASSWORD_RESET_TOKEN_EXPIRES_MINUTES: int = 60
 
 
