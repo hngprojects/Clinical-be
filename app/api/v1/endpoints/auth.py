@@ -267,7 +267,7 @@ async def refresh(
 		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
 	)
 	return SuccessResponse(
-		message="Tokens refreshed",  # or any string you use elsewhere
+		message="Tokens refreshed",
 		data=TokenResponse(
 			access_token=tokens["access_token"],
 			token_type="bearer",
