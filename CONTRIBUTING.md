@@ -10,8 +10,10 @@ Thank you for contributing! This document outlines the standards and processes w
 - [Getting Started](#getting-started)
 - [Branch Naming Convention](#branch-naming-convention)
 - [Commit Message Convention](#commit-message-convention)
+  - [Using Commitizen](#using-commitizen)
 - [Pull Request Process](#pull-request-process)
 - [Testing Requirements](#testing-requirements)
+  - [Migration Validation with Pylembic](#migration-validation-with-pylembic)
 - [Code Style](#code-style)
 - [Code of Conduct](#code-of-conduct)
 - [License](#license)
@@ -195,6 +197,29 @@ feat: added new feature
 refactor: change code
 ```
 
+### Using Commitizen
+
+We use [Commitizen](https://commitizen-tools.github.io/commitizen/) to make it easy to write correct conventional commits interactively.
+
+**Instead of writing commits manually, use:**
+
+```bash
+uv run cz commit
+```
+
+This launches an interactive prompt that walks you through selecting a type, scope, subject, body, and footer — and formats everything correctly.
+
+**Other useful Commitizen commands:**
+
+| Command | Description |
+|---------|-------------|
+| `uv run cz commit` | Interactive commit wizard |
+| `uv run cz changelog` | Auto-generate a CHANGELOG from commit history |
+| `uv run cz check` | Validate that the last commit follows the convention |
+| `uv run cz version` | Show the current project version |
+
+> **Tip:** Your pre-commit hook will also validate commit messages automatically when you use `git commit`. If the message doesn't follow the convention, the commit will be rejected.
+
 ---
 
 ## Pull Request Process
@@ -286,6 +311,40 @@ Examples:
 - `test_create_user_returns_201_with_valid_email`
 - `test_login_returns_401_with_wrong_password`
 - `test_get_case_returns_404_when_not_found`
+
+### Migration Validation with Pylembic
+
+We use [pylembic](https://github.com/davidbrochart/pylembic) to validate the integrity of the Alembic migration chain as part of the test suite. It catches common migration mistakes before they hit the database.
+
+**The following checks run automatically with `uv run pytest`:**
+
+| Check | What it catches |
+|-------|-----------------|
+| `test_single_head_revision` | Ensures there is exactly one migration head (no forked chains) |
+| `test_no_duplicate_revision_ids` | Ensures no two migrations share the same revision ID |
+| `test_complete_revision_chain` | Validates the full `down_revision` chain is unbroken from base to head |
+
+**You can also run migration tests in isolation:**
+
+```bash
+uv run pytest tests/test_migrations.py -v
+```
+
+**Rules when writing migrations:**
+
+- Always generate migrations with Alembic — do **not** edit the database schema by hand:
+  ```bash
+  uv run alembic revision --autogenerate -m "describe your change"
+  ```
+- Never create a migration that branches the chain (two revisions pointing to the same `down_revision`). If you hit a branch conflict, resolve it by rebasing your migration's `down_revision` to point to the current head:
+  ```bash
+  uv run alembic heads   # should show exactly 1 head
+  uv run alembic history # inspect the chain
+  ```
+- Always run the migration tests locally before opening a PR:
+  ```bash
+  uv run pytest tests/test_migrations.py -v
+  ```
 
 ---
 

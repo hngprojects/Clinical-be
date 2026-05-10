@@ -13,14 +13,12 @@ from app.core.exceptions import (
 
 settings = get_settings()
 
-if settings.RESEND_API_KEY:
-	import resend
-
-	resend.api_key = settings.RESEND_API_KEY
-elif not settings.ALLOW_STDOUT_EMAIL:
+if not settings.SMTP_USERNAME and not settings.ALLOW_STDOUT_EMAIL:
 	import warnings
 
-	warnings.warn("RESEND_API_KEY is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail.")
+	warnings.warn(
+		"SMTP credentials (SMTP_USERNAME/SMTP_PASSWORD) are not set and ALLOW_STDOUT_EMAIL is False. Emails will fail."
+	)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

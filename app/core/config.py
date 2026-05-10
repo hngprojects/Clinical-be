@@ -36,12 +36,13 @@ class Settings(BaseSettings):
 	OTP_MAX_ATTEMPTS: int = 5
 	OTP_PEPPER: str = Field(min_length=32)
 
-	# Resend (email)
-	# When RESEND_API_KEY is not set, ALLOW_STDOUT_EMAIL must be True to log OTPs to stdout.
-	RESEND_API_KEY: str | None = None
+	SMTP_HOST: str = "smtp.gmail.com"
+	SMTP_PORT: int = 587
+	SMTP_USERNAME: str | None = None
+	SMTP_PASSWORD: str | None = None
+	SMTP_FROM_EMAIL: str = ""
+	SMTP_FROM_NAME: str = "Clinsights"
 	ALLOW_STDOUT_EMAIL: bool = False
-	RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
-	RESEND_FROM_NAME: str = "Clinsights"
 
 	# Password reset
 	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"
