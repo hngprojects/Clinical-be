@@ -1,8 +1,9 @@
 import asyncio
+from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Cookie, HTTPException, Request, status
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DBSession
@@ -17,6 +18,7 @@ from app.schemas.auth import (
 	ResendOtpRequest,
 	ResetPasswordRequest,
 	SignupRequest,
+	TokenPair,
 	TokenResponse,
 	VerifyOtpRequest,
 )
@@ -28,7 +30,7 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token
+from app.services.auth.tokens import create_access_token, refresh_all_tokens
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
@@ -66,22 +68,39 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 
 @router.post(
 	"/login",
-	response_model=SuccessResponse[TokenResponse],
+	response_model=SuccessResponse[TokenPair],
 )
-async def login(payload: LoginRequest, session: DBSession) -> SuccessResponse[TokenResponse]:
+async def login(payload: LoginRequest, session: DBSession, response: Response) -> SuccessResponse[TokenPair]:
 	"""Authenticate with email + password. Returns a JWT on success.
 
 	The account must have a verified email before login is permitted.
 	"""
-	user, access_token, ttl_seconds = await authenticate_credentials(
+	user, access_token, ttl_seconds, refresh_token = await authenticate_credentials(
 		session, email=payload.email, password=payload.password
+	)
+	settings = get_settings()
+	response.set_cookie(
+		key="access_token",
+		value=access_token,
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
+	)
+	response.set_cookie(
+		key="refresh_token",
+		value=refresh_token,
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
 	)
 	return SuccessResponse(
 		message="Logged in successfully.",
-		data=TokenResponse(
+		data=TokenPair(
 			access_token=access_token,
-			expires_in=ttl_seconds,
-			user=UserResponse.model_validate(user),
+			refresh_token=refresh_token,
+			token_type="bearer",
 		),
 	)
 
@@ -207,5 +226,40 @@ async def google_callback(
 			refresh_token=app_access_token,  # Placeholder until refresh tokens are implemented
 			token_type="bearer",
 			user=UserResponse.model_validate(user),
+		),
+	)
+
+
+@router.post("/refresh-tokens", response_model=SuccessResponse[TokenPair])
+async def refresh(
+	session: DBSession,
+	response: Response,
+	refresh_token: Annotated[str | None, Cookie()] = None,
+) -> SuccessResponse[TokenPair]:
+	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
+
+	settings = get_settings()
+	response.set_cookie(
+		key="access_token",
+		value=tokens["access_token"],
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES * 60,
+	)
+	response.set_cookie(
+		key="refresh_token",
+		value=tokens["refresh_token"],
+		httponly=True,
+		secure=settings.COOKIE_SECURE,
+		samesite=settings.COOKIE_SAMESITE,
+		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
+	)
+	return SuccessResponse(
+		message="Tokens refreshed",  # or any string you use elsewhere
+		data=TokenPair(
+			access_token=tokens["access_token"],
+			refresh_token=tokens["refresh_token"],
+			token_type="bearer",
 		),
 	)

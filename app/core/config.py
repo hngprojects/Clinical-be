@@ -28,7 +28,8 @@ class Settings(BaseSettings):
 	# JWT
 	JWT_SECRET: str = Field(min_length=32)
 	JWT_ALGORITHM: str = "HS256"
-	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 60
+	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 3
+	JWT_REFRESH_TOKEN_EXPIRES_MINUTES: int = 5
 
 	# OTP
 	OTP_LENGTH: int = 6
@@ -42,6 +43,8 @@ class Settings(BaseSettings):
 	ALLOW_STDOUT_EMAIL: bool = False
 	RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 	RESEND_FROM_NAME: str = "Clinsights"
+	COOKIE_SECURE: bool = False
+	COOKIE_SAMESITE: str = "strict"
 
 	# Password reset
 	FRONTEND_RESET_PASSWORD_URL: str = "http://localhost:3000/reset-password"

@@ -59,6 +59,21 @@ class TokenResponse(BaseModel):
 	model_config = ConfigDict(from_attributes=True)
 
 
+class TokenData(BaseModel):
+	user_id: str | None = None
+
+
+class TokenPair(BaseModel):
+	status: str = "success"
+	access_token: str
+	refresh_token: str
+	token_type: str = "bearer"
+
+
+class RefreshTokenBase(BaseModel):
+	refresh_token: str
+
+
 class OtpDispatchResponse(BaseModel):
 	"""Returned after an OTP is dispatched (signup or resend)."""
 

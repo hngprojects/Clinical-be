@@ -16,7 +16,7 @@ from app.services.auth.otp import (
 	create_otp_for_user,
 	verify_otp_for_user,
 )
-from app.services.auth.tokens import create_access_token
+from app.services.auth.tokens import create_access_token, create_refresh_token
 
 
 async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
@@ -79,8 +79,8 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 	return user
 
 
-async def authenticate_credentials(session: AsyncSession, *, email: str, password: str) -> tuple[User, str, int]:
-	"""Verify email + password and return (user, access_token, ttl_seconds).
+async def authenticate_credentials(session: AsyncSession, *, email: str, password: str) -> tuple[User, str, int, str]:
+	"""Verify email + password and return (user, access_token, ttl_seconds, refresh_token).
 
 	Raises:
 		NotFoundError: if the email is not registered.
@@ -103,7 +103,8 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	await session.refresh(user)
 
 	token, ttl_seconds = create_access_token(user.id)
-	return user, token, ttl_seconds
+	refresh_token = create_refresh_token(user.id, session)
+	return user, token, ttl_seconds, refresh_token
 
 
 async def authenticate_otp(

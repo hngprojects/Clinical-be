@@ -15,6 +15,7 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 
 	Raises EmailError if the API key is not configured or the send fails.
 	"""
+	print("reset token", reset_token)
 	settings = get_settings()
 	if not settings.RESEND_API_KEY:
 		if not settings.ALLOW_STDOUT_EMAIL:
