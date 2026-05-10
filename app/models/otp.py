@@ -17,7 +17,6 @@ class OtpPurpose(str, enum.Enum):
 	"""Why an OTP was issued."""
 
 	EMAIL_VERIFICATION = "email_verification"
-	LOGIN = "login"
 
 
 class OtpCode(Base):

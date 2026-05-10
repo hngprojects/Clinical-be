@@ -34,7 +34,7 @@ def upgrade() -> None:
 			last_name  = CASE
 				WHEN position(' ' in name) > 0
 					THEN trim(substring(name from position(' ' in name) + 1))
-				ELSE '-'
+				ELSE first_name
 			END
 		WHERE first_name IS NULL OR last_name IS NULL
 		"""

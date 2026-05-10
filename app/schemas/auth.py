@@ -1,11 +1,13 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
-from app.models.otp import OtpPurpose
 from app.schemas.user import UserResponse
 
 
 class SignupRequest(BaseModel):
-	"""Body sent by the signup form: first name, last name, email, and password."""
+	"""Signup form: first name, last name, email, password + confirm.
+
+	After account creation a 6-digit OTP is emailed for address verification.
+	"""
 
 	model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -13,19 +15,26 @@ class SignupRequest(BaseModel):
 	last_name: str = Field(min_length=1, max_length=100)
 	email: EmailStr
 	password: str = Field(min_length=8, max_length=72)
+	confirm_password: str = Field(min_length=8, max_length=72)
+
+	@model_validator(mode="after")
+	def passwords_match(self) -> "SignupRequest":
+		if self.password != self.confirm_password:
+			raise ValueError("Passwords do not match.")
+		return self
 
 
 class LoginRequest(BaseModel):
-	"""Body sent by the login form: email and password."""
+	"""Login with email + password. Returns a JWT on success."""
 
 	model_config = ConfigDict(str_strip_whitespace=True)
 
 	email: EmailStr
-	password: str = Field(min_length=8, max_length=72)
+	password: str = Field(min_length=1, max_length=72)
 
 
 class VerifyOtpRequest(BaseModel):
-	"""Verify the email-verification OTP sent after signup."""
+	"""Verify the email-verification OTP issued after signup."""
 
 	model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -40,7 +49,7 @@ class ResendOtpRequest(BaseModel):
 
 
 class TokenResponse(BaseModel):
-	"""Returned after a successful OTP verification."""
+	"""Returned after a successful login or OTP verification."""
 
 	access_token: str
 	token_type: str = "bearer"
@@ -51,10 +60,9 @@ class TokenResponse(BaseModel):
 
 
 class OtpDispatchResponse(BaseModel):
-	"""Returned after an OTP is dispatched (signup, login, resend)."""
+	"""Returned after an OTP is dispatched (signup or resend)."""
 
 	email: EmailStr
-	purpose: OtpPurpose
 	expires_in_seconds: int
 
 

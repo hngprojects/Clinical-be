@@ -4,7 +4,7 @@ from uuid import UUID
 
 import jwt
 
-from app.core.config import settings
+from app.core.config import get_settings
 
 
 def create_access_token(
@@ -14,18 +14,24 @@ def create_access_token(
 	extra_claims: dict[str, Any] | None = None,
 ) -> tuple[str, int]:
 	"""Issue a signed JWT for `user_id`. Returns (token, ttl_seconds)."""
+	settings = get_settings()
 	ttl_minutes = expires_minutes if expires_minutes is not None else settings.JWT_ACCESS_TOKEN_EXPIRES_MINUTES
 	now = datetime.now(timezone.utc)
 	expires_at = now + timedelta(minutes=ttl_minutes)
 
-	payload: dict[str, Any] = {
-		"sub": str(user_id),
-		"iat": int(now.timestamp()),
-		"exp": int(expires_at.timestamp()),
-		"type": "access",
-	}
+	payload: dict[str, Any] = {}
 	if extra_claims:
 		payload.update(extra_claims)
+
+	# Reserved claims are set unconditionally (overriding any in extra_claims)
+	payload.update(
+		{
+			"sub": str(user_id),
+			"iat": int(now.timestamp()),
+			"exp": int(expires_at.timestamp()),
+			"type": "access",
+		}
+	)
 
 	token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 	return token, ttl_minutes * 60
@@ -38,6 +44,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
 	`type` is not exactly `"access"` so future refresh / verification /
 	password-reset tokens signed with the same secret cannot be reused here.
 	"""
+	settings = get_settings()
 	payload = jwt.decode(
 		token,
 		settings.JWT_SECRET,

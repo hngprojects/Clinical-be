@@ -4,12 +4,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 
 from app.api.v1.router import api_router
-from app.core.config import settings
+from app.core.config import get_settings
 from app.core.exceptions import (
 	http_exception_handler,
 	unhandled_exception_handler,
 	validation_exception_handler,
 )
+
+settings = get_settings()
+
+if settings.RESEND_API_KEY:
+	import resend
+
+	resend.api_key = settings.RESEND_API_KEY
+elif not settings.ALLOW_STDOUT_EMAIL:
+	import warnings
+
+	warnings.warn("RESEND_API_KEY is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail.")
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
