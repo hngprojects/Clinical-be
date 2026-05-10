@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DBSession
 from app.core.config import get_settings
+from app.core.exceptions import UnauthorizedError
 from app.core.responses import SuccessResponse
 from app.models.user import User
 from app.schemas.auth import (
@@ -227,9 +228,11 @@ async def google_callback(
 async def refresh(
 	session: DBSession,
 	response: Response,
-	refresh_token: Annotated[str, Cookie()],
+	refresh_token: Annotated[str | None, Cookie()] = None,
 ) -> SuccessResponse[TokenResponse]:
 	"""Refresh the access and refresh tokens."""
+	if not refresh_token:
+		raise UnauthorizedError(message="Refresh token cookie is required")
 	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
 
 	settings = get_settings()
