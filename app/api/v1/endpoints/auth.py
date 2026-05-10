@@ -1,13 +1,17 @@
 import asyncio
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DBSession
+from app.core.config import get_settings
 from app.core.responses import SuccessResponse
 from app.models.user import User
 from app.schemas.auth import (
 	ForgotPasswordRequest,
+	GoogleAuthData,
 	LoginRequest,
 	OtpDispatchResponse,
 	ResendOtpRequest,
@@ -24,11 +28,17 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
+from app.services.auth.tokens import create_access_token
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
 from app.services.email import send_password_reset_email
+from app.services.oauth import (
+	exchange_google_code,
+	fetch_google_user_info,
+	get_or_create_google_user,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -159,3 +169,47 @@ async def password_reset(request: ResetPasswordRequest, session: DBSession) -> S
 	await reset_password(session, request.token, request.new_password)
 	await session.commit()
 	return SuccessResponse(message="Password reset successfully.")
+
+
+@router.get("/google")
+async def google_login() -> RedirectResponse:
+	"""Redirect to Google's OAuth consent screen."""
+	settings = get_settings()
+	query_params = urlencode(
+		{
+			"client_id": settings.GOOGLE_CLIENT_ID,
+			"redirect_uri": settings.GOOGLE_REDIRECT_URI,
+			"response_type": "code",
+			"scope": "openid email profile",
+		}
+	)
+	google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{query_params}"
+	return RedirectResponse(url=google_auth_url)
+
+
+@router.get("/google/callback", response_model=SuccessResponse[GoogleAuthData])
+async def google_callback(
+	code: str,
+	session: DBSession,
+) -> SuccessResponse[GoogleAuthData]:
+	"""Handle the Google OAuth callback and return app tokens."""
+	token_data = await exchange_google_code(code)
+	google_access_token = token_data.get("access_token")
+
+	if not google_access_token:
+		raise HTTPException(status_code=400, detail="Google access token not found")
+
+	google_user = await fetch_google_user_info(google_access_token)
+	user = await get_or_create_google_user(session, google_user)
+
+	app_access_token, ttl_seconds = create_access_token(user.id)
+
+	return SuccessResponse[GoogleAuthData](
+		message="Google authentication successful",
+		data=GoogleAuthData(
+			access_token=app_access_token,
+			refresh_token=app_access_token,  # Placeholder until refresh tokens are implemented
+			token_type="bearer",
+			user=UserResponse.model_validate(user),
+		),
+	)

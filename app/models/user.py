@@ -33,14 +33,29 @@ class User(Base):
 	first_name: Mapped[str] = mapped_column(String, nullable=False)
 	last_name: Mapped[str] = mapped_column(String, nullable=False)
 	role: Mapped[UserRole] = mapped_column(
-		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=UserRole.PATIENT
+		Enum(UserRole, values_callable=lambda obj: [e.value for e in obj]),
+		nullable=False,
+		default=UserRole.PATIENT,
 	)
-	is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-	is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+	is_email_verified: Mapped[bool] = mapped_column(
+		Boolean,
+		nullable=False,
+		default=False,
+	)
+	is_active: Mapped[bool] = mapped_column(
+		Boolean,
+		nullable=False,
+		default=True,
+	)
 	created_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+		DateTime(timezone=True),
+		nullable=False,
+		default=lambda: datetime.now(timezone.utc),
 	)
-	last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+	last_login_at: Mapped[datetime | None] = mapped_column(
+		DateTime(timezone=True),
+		nullable=True,
+	)
 
 	medical_cases: Mapped[list["MedicalCase"]] = relationship(back_populates="user")
 	chats: Mapped[list["Chat"]] = relationship(back_populates="user")

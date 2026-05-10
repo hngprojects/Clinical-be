@@ -6,6 +6,7 @@ from app.schemas.ai_interpretation import (
 )
 from app.schemas.auth import (
 	ForgotPasswordRequest,
+	GoogleAuthData,
 	LoginRequest,
 	OtpDispatchResponse,
 	ResendOtpRequest,
@@ -38,6 +39,8 @@ __all__ = [
 	# Auth (password reset)
 	"ForgotPasswordRequest",
 	"ResetPasswordRequest",
+	# Auth (Google OAuth)
+	"GoogleAuthData",
 	# MedicalCase
 	"MedicalCaseBase",
 	"MedicalCaseCreate",
