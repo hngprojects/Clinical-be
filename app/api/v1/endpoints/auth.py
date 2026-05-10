@@ -230,7 +230,7 @@ async def google_callback(
 	)
 
 
-@router.post("/refresh-tokens", response_model=SuccessResponse[TokenPair])
+@router.get("/refresh-tokens", response_model=SuccessResponse[TokenPair])
 async def refresh(
 	session: DBSession,
 	response: Response,
