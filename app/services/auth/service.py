@@ -103,7 +103,7 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	await session.refresh(user)
 
 	token, ttl_seconds = create_access_token(user.id)
-	refresh_token = create_refresh_token(user.id, session)
+	refresh_token = await create_refresh_token(user.id, session)
 	return user, token, ttl_seconds, refresh_token
 
 

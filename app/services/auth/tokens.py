@@ -4,7 +4,7 @@ from uuid import UUID
 
 import jwt
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.exceptions import UnauthorizedError
@@ -62,7 +62,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
 	return payload
 
 
-def create_refresh_token(user_id: UUID, session: Session) -> str:
+async def create_refresh_token(user_id: UUID, session: AsyncSession) -> str:
 	now = datetime.now(timezone.utc)
 	settings = get_settings()
 	payload = {
@@ -73,12 +73,12 @@ def create_refresh_token(user_id: UUID, session: Session) -> str:
 	}
 	token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 	refresh_token = RefreshToken(
+		user_id=user_id,
 		token_hash=hash_opaque_token(token),
 		expires_at=now + timedelta(minutes=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES),
 	)
 	session.add(refresh_token)
-	session.commit()
-	session.refresh(refresh_token)
+	await session.commit()
 	return token
 
 
@@ -90,19 +90,21 @@ def decode_refresh_token(token: str) -> dict[str, Any]:
 	return payload
 
 
-async def revoke_refresh_token(token: str, session: Session):
-	refresh_token = await session.get(RefreshToken, hash_opaque_token(token))
-	if not refresh_token:
+async def revoke_refresh_token(token: str, session: AsyncSession) -> RefreshToken:
+	"""Look up by token_hash; session.get(RefreshToken, <hash>) would wrongly use PK id (UUID)."""
+	h = hash_opaque_token(token)
+	result = await session.execute(select(RefreshToken).where(RefreshToken.token_hash == h))
+	row = result.scalar_one_or_none()
+	if row is None:
 		raise UnauthorizedError(message="Refresh token not found")
-	if refresh_token.is_revoked:
+	if row.is_revoked:
 		raise UnauthorizedError(message="Refresh token has been revoked")
-	refresh_token.is_revoked = True
-	session.commit()
-	session.refresh(refresh_token)
-	return refresh_token
+	row.is_revoked = True
+	await session.commit()
+	return row
 
 
-async def refresh_all_tokens(*, session: Session, refresh_token: str) -> dict:
+async def refresh_all_tokens(*, session: AsyncSession, refresh_token: str) -> dict:
 	payload = decode_refresh_token(refresh_token)
 	user_id = payload.get("sub")
 	if not user_id:
@@ -110,8 +112,8 @@ async def refresh_all_tokens(*, session: Session, refresh_token: str) -> dict:
 	user = await session.get(User, UUID(user_id))
 	if not user:
 		raise UnauthorizedError(message="User not found")
-	revoke_refresh_token(refresh_token, session)
+	await revoke_refresh_token(refresh_token, session)
 	access_token, _ = create_access_token(user.id)
-	refresh_token = create_refresh_token(user.id, session)
+	new_refresh = await create_refresh_token(user.id, session)
 
-	return {"access_token": access_token, "refresh_token": refresh_token}
+	return {"access_token": access_token, "refresh_token": new_refresh}

@@ -1,5 +1,5 @@
 from app.models.ai_interpretation import AIInterpretation
-from app.models.auth import PasswordResetToken
+from app.models.auth import PasswordResetToken, RefreshToken
 from app.models.base import Base
 from app.models.chat import Chat
 from app.models.lab_result import LabResult
@@ -13,6 +13,7 @@ __all__ = [
 	"Base",
 	"AIInterpretation",
 	"PasswordResetToken",
+	"RefreshToken",
 	"Chat",
 	"LabResult",
 	"MedicalCase",
