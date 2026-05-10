@@ -1,7 +1,11 @@
+import asyncio
+
 from fastapi import APIRouter, status
+from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DBSession
 from app.core.responses import SuccessResponse
+from app.models.user import User
 from app.schemas.auth import (
 	ForgotPasswordRequest,
 	LoginRequest,
@@ -135,18 +139,14 @@ async def forgot_password(request: ForgotPasswordRequest, session: DBSession) ->
 	The email is sent BEFORE committing the token so a process crash between
 	commit and send cannot leave a ghost token with no email delivered.
 	"""
-	from sqlalchemy import select
-
-	from app.models.user import User
-
 	user = await session.scalar(select(User).where(User.email == request.email.strip().lower()))
 	if user:
 		# Stage the token (flush only — not committed yet).
 		raw = await create_password_reset(session, user)
-		# Send first: if this raises, the transaction rolls back automatically.
-		await send_password_reset_email(user.email, raw)
-		# Persist only after email is confirmed sent.
+		# Commit the token to DB first, so the email contains a valid reference
 		await session.commit()
+		# Send the email in the background to mask the delay and mitigate enumeration
+		asyncio.create_task(send_password_reset_email(user.email, raw))
 	return SuccessResponse(message="If this email is registered, you'll receive a reset link shortly.")
 
 

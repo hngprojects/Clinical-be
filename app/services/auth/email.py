@@ -12,14 +12,12 @@ logger = logging.getLogger(__name__)
 
 _PURPOSE_SUBJECTS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: "Verify your email",
-	OtpPurpose.LOGIN: "Your login code",
 }
 
 _PURPOSE_INTROS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: (
 		"Welcome to Clinsights! Use the code below to verify your email and finish creating your account."
 	),
-	OtpPurpose.LOGIN: "Use the code below to sign in to Clinsights.",
 }
 
 
