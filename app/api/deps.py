@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import UnauthorizedError
 from app.db.session import get_session
 from app.models.user import User
+from app.services.auth.blocklist import is_token_revoked
 from app.services.auth.tokens import decode_access_token
 
 DBSession = Annotated[AsyncSession, Depends(get_session)]
@@ -30,6 +31,10 @@ async def get_current_user(
 		raise UnauthorizedError("Token has expired.") from exc
 	except jwt.PyJWTError as exc:
 		raise UnauthorizedError("Invalid authentication token.") from exc
+
+	jti = payload.get("jti")
+	if not jti or await is_token_revoked(session, jti):
+		raise UnauthorizedError("Token has been revoked.")
 
 	subject = payload.get("sub")
 	if not subject:

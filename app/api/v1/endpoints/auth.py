@@ -1,11 +1,14 @@
 import asyncio
+from datetime import datetime, timezone
+from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DBSession
+from app.api.deps import CurrentUser, DBSession, bearer_scheme
 from app.core.config import get_settings
 from app.core.responses import SuccessResponse
 from app.models.user import User
@@ -21,6 +24,7 @@ from app.schemas.auth import (
 	VerifyOtpRequest,
 )
 from app.schemas.user import UserResponse
+from app.services.auth.blocklist import revoke_token
 from app.services.auth.service import (
 	authenticate_credentials,
 	authenticate_otp,
@@ -28,7 +32,7 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token
+from app.services.auth.tokens import create_access_token, decode_access_token
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
@@ -165,6 +169,29 @@ async def password_reset(request: ResetPasswordRequest, session: DBSession) -> S
 	await reset_password(session, request.token, request.new_password)
 	await session.commit()
 	return SuccessResponse(message="Password reset successfully.")
+
+
+@router.post(
+	"/logout",
+	response_model=SuccessResponse,
+	status_code=status.HTTP_200_OK,
+)
+async def logout(
+	current_user: CurrentUser,
+	session: DBSession,
+	credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+) -> SuccessResponse:
+	"""Revoke the current access token.
+
+	The token is added to the server-side blocklist so it cannot be reused,
+	even if its intrinsic TTL has not yet elapsed.  The client is still
+	responsible for discarding the token locally.
+	"""
+	payload = decode_access_token(credentials.credentials)
+	jti: str = payload["jti"]
+	expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+	await revoke_token(session, jti=jti, user_id=current_user.id, expires_at=expires_at)
+	return SuccessResponse(message="Logged out successfully.")
 
 
 @router.get("/google")
