@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
@@ -27,6 +28,7 @@ def create_access_token(
 	payload.update(
 		{
 			"sub": str(user_id),
+			"jti": str(uuid.uuid4()),
 			"iat": int(now.timestamp()),
 			"exp": int(expires_at.timestamp()),
 			"type": "access",
@@ -49,7 +51,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
 		token,
 		settings.JWT_SECRET,
 		algorithms=[settings.JWT_ALGORITHM],
-		options={"require": ["exp", "sub", "type"]},
+		options={"require": ["exp", "sub", "type", "jti"]},
 	)
 	if payload.get("type") != "access":
 		raise jwt.InvalidTokenError("Token is not an access token")
