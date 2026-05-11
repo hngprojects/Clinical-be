@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from urllib.parse import urlencode
 
@@ -22,6 +23,7 @@ from app.schemas.auth import (
 	VerifyOtpRequest,
 )
 from app.schemas.user import UserResponse
+from app.services.auth.email import send_otp_email
 from app.services.auth.service import (
 	authenticate_credentials,
 	authenticate_otp,
@@ -34,6 +36,7 @@ from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
+from app.services.email import send_password_reset_email
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
@@ -44,6 +47,13 @@ from app.tasks.email import send_otp_email_task, send_password_reset_email_task
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _mask_email(email: str) -> str:
+	if "@" in email:
+		local, domain = email.split("@", 1)
+		return f"{local[:2]}***@{domain}"
+	return "***"
 
 
 @router.post(
@@ -58,6 +68,7 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 	with the emailed code to activate the account before they can log in.
 	"""
 	user, code = await signup_user(session, payload)
+	email_dispatched = False
 	try:
 		send_otp_email_task.delay(
 			to_email=user.email,
@@ -65,10 +76,26 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 			code=code,
 			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
 		)
+		email_dispatched = True
 	except Exception:
-		logger.exception("Failed to enqueue OTP email for %s", user.email)
+		logger.exception("Failed to enqueue OTP email for %s", _mask_email(user.email))
+		try:
+			await asyncio.to_thread(
+				send_otp_email,
+				to_email=user.email,
+				first_name=user.first_name or user.email.split("@")[0],
+				code=code,
+				purpose=OtpPurpose.EMAIL_VERIFICATION,
+			)
+			email_dispatched = True
+		except Exception:
+			logger.exception("Failed to send OTP email directly for %s", _mask_email(user.email))
 	return SuccessResponse(
-		message="Verification code sent to your email.",
+		message=(
+			"Verification code sent to your email."
+			if email_dispatched
+			else "Verification code created. If you do not receive an email, request a new code."
+		),
 		data=OtpDispatchResponse(
 			email=user.email,
 			expires_in_seconds=otp_ttl_seconds(),
@@ -130,6 +157,7 @@ async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessRe
 async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
 	"""Re-send the email-verification OTP (e.g. if it expired)."""
 	user, code = await resend_otp(session, email=payload.email)
+	email_dispatched = False
 	try:
 		send_otp_email_task.delay(
 			to_email=user.email,
@@ -137,10 +165,26 @@ async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessRespon
 			code=code,
 			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
 		)
+		email_dispatched = True
 	except Exception:
-		logger.exception("Failed to enqueue OTP email for %s", user.email)
+		logger.exception("Failed to enqueue OTP email for %s", _mask_email(user.email))
+		try:
+			await asyncio.to_thread(
+				send_otp_email,
+				to_email=user.email,
+				first_name=user.first_name or user.email.split("@")[0],
+				code=code,
+				purpose=OtpPurpose.EMAIL_VERIFICATION,
+			)
+			email_dispatched = True
+		except Exception:
+			logger.exception("Failed to send OTP email directly for %s", _mask_email(user.email))
 	return SuccessResponse(
-		message="A new code has been sent to your email.",
+		message=(
+			"A new code has been sent to your email."
+			if email_dispatched
+			else "A new code was created. If you do not receive an email, request another code."
+		),
 		data=OtpDispatchResponse(
 			email=user.email,
 			expires_in_seconds=otp_ttl_seconds(),
@@ -174,7 +218,11 @@ async def forgot_password(request: ForgotPasswordRequest, session: DBSession) ->
 		try:
 			send_password_reset_email_task.delay(user.email, raw)
 		except Exception:
-			logger.exception("Failed to enqueue password reset email for %s", user.email)
+			logger.exception("Failed to enqueue password reset email for %s", _mask_email(user.email))
+			try:
+				await asyncio.to_thread(send_password_reset_email, user.email, raw)
+			except Exception:
+				logger.exception("Failed to send password reset email directly for %s", _mask_email(user.email))
 	return SuccessResponse(message="If this email is registered, you'll receive a reset link shortly.")
 
 
