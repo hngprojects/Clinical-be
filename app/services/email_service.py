@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import html
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict
+from urllib.parse import urlparse
 
+import jinja2
 import resend
 
 from app.core.exceptions import EmailError
@@ -28,72 +31,50 @@ class EmailPayload:
 
 
 class TemplatesRegistry:
+	_env = None
+	_template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates", "emails"))
+
+	try:
+		_env = jinja2.Environment(
+			loader=jinja2.FileSystemLoader(_template_dir),
+			autoescape=jinja2.select_autoescape(["html", "xml"]),
+			undefined=jinja2.StrictUndefined,
+		)
+	except Exception:
+		_env = None
+
 	@staticmethod
 	def PASSWORD_RESET(context: Dict[str, Any]) -> Dict[str, str]:
-		html = f"""
-<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:24px;">
-  <p>Hi {context.get("name", "User")},</p>
-  <div style="background:#eef2f7;padding:24px;border-radius:8px;">
-    <h1 style="color:#0b5ed7;margin:0 0 12px 0;">Reset Your Password</h1>
-    <p>We received a request to reset your Clinsight password. Use the verification code below to continue:</p>
-    <p style="font-weight:700;font-size:20px;margin:12px 0;">{context.get("code", "")}</p>
-    <p>This code will expire in {context.get("expires_minutes", 10)} minutes.</p>
-  </div>
-  <p style="margin-top:18px;color:#64748b;font-size:13px;">If you didn't request a password reset, you can safely ignore this email.</p>
-</div>
-"""
-		return {"subject": "Reset Your Clinsight Password", "html": html}
+		tpl = TemplatesRegistry._env.get_template("password_reset.html")
+		html_out = tpl.render(**context)
+		return {"subject": "Reset Your Clinsight Password", "html": html_out}
 
 	@staticmethod
 	def PASSWORD_RESET_CONFIRMATION(context: Dict[str, Any]) -> Dict[str, str]:
-		html = f"""
-<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:24px;">
-  <p>Hi {context.get("name", "User")},</p>
-  <div style="background:#eef2f7;padding:24px;border-radius:8px;">
-    <h1 style="color:#0b5ed7;margin:0 0 12px 0;">Your Password Has Been Reset</h1>
-    <p>Your Clinsight password was successfully reset.</p>
-    <p>You can now log in to your account using your new password.</p>
-    <p style="margin-top:12px;">If you didn't make this change, please contact support immediately to secure your account.</p>
-  </div>
-</div>
-"""
-		return {"subject": "Your Password Has Been Reset", "html": html}
+		tpl = TemplatesRegistry._env.get_template("password_reset_confirmation.html")
+		html_out = tpl.render(**context)
+		return {"subject": "Your Password Has Been Reset", "html": html_out}
 
 	@staticmethod
 	def WAITLIST_INVITE(context: Dict[str, Any]) -> Dict[str, str]:
-		cta_url = context.get("cta_url", "#")
-		html = f"""
-<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:24px;">
-  <p>Hi {context.get("name", "User")},</p>
-  <div style="background:#eef2f7;padding:24px;border-radius:8px;">
-    <h1 style="color:#0b5ed7;margin:0 0 12px 0;">You're Invited to Clinsight</h1>
-    <p>Thanks for joining the waitlist. We've reserved your spot. Click below to complete signup and get started.</p>
-    <p style="margin-top:12px;"><a href="{cta_url}" style="display:inline-block;padding:10px 18px;background:#0b5ed7;color:#fff;border-radius:8px;text-decoration:none;">Sign in to your account</a></p>
-  </div>
-  <p style="margin-top:18px;color:#64748b;font-size:13px;">If you did not sign up for this account you can ignore this email.</p>
-</div>
-"""
-		return {"subject": "Welcome — your Clinsight invite", "html": html}
+		tpl = TemplatesRegistry._env.get_template("waitlist_invite.html")
+		html_out = tpl.render(**context)
+		return {"subject": "Welcome — your Clinsight invite", "html": html_out}
 
 	@staticmethod
 	def WELCOME(context: Dict[str, Any]) -> Dict[str, str]:
-		cta_url = context.get("cta_url", "#")
-		html = f"""
-<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:24px;">
-  <p>Hi {context.get("name", "User")},</p>
-  <div style="background:#eef2f7;padding:24px;border-radius:8px;">
-    <h1 style="color:#0b5ed7;margin:0 0 12px 0;">A big welcome to the Clinsight family</h1>
-    <p>Welcome to Clinsight. You can now understand your lab results in seconds.</p>
-    <ul>
-      <li>Clear explanations in plain language</li>
-      <li>Instant risk levels</li>
-      <li>Simple next steps you can act on</li>
-    </ul>
-    <p style="margin-top:12px;"><a href="{cta_url}" style="display:inline-block;padding:10px 18px;background:#0b5ed7;color:#fff;border-radius:8px;text-decoration:none;">Sign in to your account</a></p>
-  </div>
-</div>
-"""
-		return {"subject": "Welcome to Clinsight", "html": html}
+		tpl = TemplatesRegistry._env.get_template("welcome.html")
+		html_out = tpl.render(**context)
+		return {"subject": "Welcome to Clinsight", "html": html_out}
+
+
+# map EMAIL_TYPE to template builders
+TEMPLATES: Dict[EMAIL_TYPE, Any] = {
+	EMAIL_TYPE.PASSWORD_RESET: TemplatesRegistry.PASSWORD_RESET,
+	EMAIL_TYPE.PASSWORD_RESET_CONFIRMATION: TemplatesRegistry.PASSWORD_RESET_CONFIRMATION,
+	EMAIL_TYPE.WAITLIST_INVITE: TemplatesRegistry.WAITLIST_INVITE,
+	EMAIL_TYPE.WELCOME: TemplatesRegistry.WELCOME,
+}
 
 
 class EmailProvider(ABC):
@@ -111,7 +92,7 @@ class ResendProvider(EmailProvider):
 
 	async def send(self, payload: EmailPayload) -> None:
 		try:
-			resend.Emails.send(
+			await resend.Emails.send_async(
 				{
 					"from": f"{payload.from_name} <{payload.from_email}>",
 					"to": payload.to,
@@ -119,8 +100,8 @@ class ResendProvider(EmailProvider):
 					"html": payload.html,
 				}
 			)
-		except Exception:
-			raise EmailError("Failed to deliver email")
+		except Exception as e:
+			raise EmailError("Failed to deliver email") from e
 
 
 class EmailService:
@@ -136,11 +117,32 @@ class EmailService:
 			self.provider = ResendProvider(api_key=api_key, from_email=from_email, from_name=from_name)
 
 	async def send_email(self, email_type: EMAIL_TYPE, to: str, context: Dict[str, Any]) -> None:
-		tpl_func = getattr(TemplatesRegistry, email_type.name, None)
+		tpl_func = TEMPLATES.get(email_type)
 		if tpl_func is None:
 			raise EmailError("Unknown email type")
 		try:
-			built = tpl_func(context)
+			# sanitize context: escape user-controlled values and validate cta_url scheme
+			sanitized: Dict[str, Any] = {}
+			name = context.get("name")
+			sanitized["name"] = html.escape(str(name)) if name else "User"
+			code = context.get("code")
+			sanitized["code"] = html.escape(str(code)) if code else ""
+			expires_minutes = context.get("expires_minutes")
+			try:
+				sanitized["expires_minutes"] = int(expires_minutes) if expires_minutes is not None else 10
+			except Exception:
+				sanitized["expires_minutes"] = 10
+			cta = context.get("cta_url")
+			if cta:
+				parsed = urlparse(str(cta))
+				if parsed.scheme and parsed.scheme.lower() in ("http", "https"):
+					sanitized["cta_url"] = html.escape(str(cta), quote=True)
+				else:
+					sanitized["cta_url"] = "#"
+			else:
+				sanitized["cta_url"] = "#"
+
+			built = tpl_func(sanitized)
 			payload = EmailPayload(
 				to=to,
 				subject=built["subject"],
@@ -151,8 +153,8 @@ class EmailService:
 			await self.provider.send(payload)
 		except EmailError:
 			raise
-		except Exception:
-			raise EmailError("Failed to send email")
+		except Exception as e:
+			raise EmailError("Failed to send email") from e
 
 
 _default_service: EmailService | None = None
