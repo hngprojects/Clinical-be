@@ -25,7 +25,7 @@ from app.schemas.auth import (
 	VerifyOtpRequest,
 )
 from app.schemas.user import UserResponse
-from app.services.auth.blocklist import revoke_token
+from app.services.auth.blocklist import is_token_revoked, revoke_token
 from app.services.auth.service import (
 	authenticate_credentials,
 	authenticate_otp,
@@ -33,7 +33,14 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token, create_refresh_token, decode_access_token, refresh_all_tokens
+from app.services.auth.tokens import (
+	create_access_token,
+	create_refresh_token,
+	decode_access_token,
+	decode_refresh_token,
+	revoke_refresh_token,
+	rotate_all_tokens,
+)
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
@@ -102,6 +109,7 @@ async def login(payload: LoginRequest, session: DBSession, response: Response) -
 
 	The account must have a verified email before login is permitted.
 	"""
+
 	user, access_token, ttl_seconds, refresh_token = await authenticate_credentials(
 		session, email=payload.email, password=payload.password
 	)
@@ -243,17 +251,22 @@ async def logout(
 	current_user: CurrentUser,
 	session: DBSession,
 	credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+	refresh_token: Annotated[str | None, Cookie()] = None,
 ) -> SuccessResponse:
 	"""Revoke the current access token.
 
-	The token is added to the server-side blocklist so it cannot be reused,
+	The token and refresh token is added to the server-side blocklist so it cannot be reused,
 	even if its intrinsic TTL has not yet elapsed.  The client is still
 	responsible for discarding the token locally.
 	"""
-	payload = decode_access_token(credentials.credentials)
-	jti: str = payload["jti"]
-	expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-	await revoke_token(session, jti=jti, user_id=current_user.id, expires_at=expires_at)
+	if not refresh_token:
+		raise UnauthorizedError(message="Refresh token cookie is required")
+	access_token_payload = decode_access_token(credentials.credentials)
+	access_token_jti: str = access_token_payload["jti"]
+	access_token_expires_at = datetime.fromtimestamp(access_token_payload["exp"], tz=timezone.utc)
+	await revoke_token(session, jti=access_token_jti, user_id=current_user.id, expires_at=access_token_expires_at)
+	await revoke_refresh_token(refresh_token, session)
+
 	return SuccessResponse(message="Logged out successfully.")
 
 
@@ -312,7 +325,7 @@ async def google_callback(
 	)
 
 
-@router.post("/refresh-tokens", response_model=SuccessResponse[TokenResponse])
+@router.post("/refresh", response_model=SuccessResponse[TokenResponse])
 async def refresh(
 	session: DBSession,
 	response: Response,
@@ -321,7 +334,12 @@ async def refresh(
 	"""Refresh the access and refresh tokens."""
 	if not refresh_token:
 		raise UnauthorizedError(message="Refresh token cookie is required")
-	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
+	payload = decode_refresh_token(refresh_token)
+	refresh_token_jti: str = payload["jti"]
+	if await is_token_revoked(session, refresh_token_jti):
+		raise UnauthorizedError(message="Refresh token has been revoked")
+	await revoke_refresh_token(refresh_token, session)
+	tokens = await rotate_all_tokens(session=session, refresh_token=refresh_token)
 
 	settings = get_settings()
 
