@@ -1,6 +1,7 @@
 import logging
 
-from app.core.celery_app import celery_app
+from celery import shared_task
+
 from app.models.otp import OtpPurpose
 from app.services.auth.email import send_otp_email
 from app.services.email import send_password_reset_email
@@ -8,7 +9,7 @@ from app.services.email import send_password_reset_email
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def send_otp_email_task(self, *, to_email: str, first_name: str, code: str, purpose: str) -> None:
 	try:
 		purpose_enum = OtpPurpose(purpose)
@@ -23,7 +24,7 @@ def send_otp_email_task(self, *, to_email: str, first_name: str, code: str, purp
 		raise self.retry(exc=exc) from exc
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def send_password_reset_email_task(self, to_email: str, reset_token: str) -> None:
 	try:
 		send_password_reset_email(to_email, reset_token)

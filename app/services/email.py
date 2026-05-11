@@ -8,10 +8,6 @@ from app.core.exceptions import EmailError
 
 logger = logging.getLogger(__name__)
 
-_settings = get_settings()
-if _settings.RESEND_API_KEY:
-	resend.api_key = _settings.RESEND_API_KEY
-
 
 def send_password_reset_email(to_email: str, reset_token: str) -> None:
 	"""Send a password-reset link via Resend.
@@ -25,6 +21,8 @@ def send_password_reset_email(to_email: str, reset_token: str) -> None:
 			logger.info("STDOUT EMAIL [Password Reset] -> to: %s, token: [REDACTED]", _mask_email(to_email))
 			return
 		raise EmailError(message="Email service not configured.")
+
+	resend.api_key = settings.RESEND_API_KEY
 
 	link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?{urlencode({'token': reset_token})}"
 

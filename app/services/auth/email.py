@@ -8,10 +8,6 @@ from app.models.otp import OtpPurpose
 
 logger = logging.getLogger(__name__)
 
-_settings = get_settings()
-if _settings.RESEND_API_KEY:
-	resend.api_key = _settings.RESEND_API_KEY
-
 _PURPOSE_SUBJECTS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: "Verify your email",
 }
@@ -74,6 +70,8 @@ def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPur
 				purpose.value,
 			)
 		return
+
+	resend.api_key = settings.RESEND_API_KEY
 
 	from_address = (
 		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"

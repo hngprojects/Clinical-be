@@ -1,9 +1,12 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 
 from app.api.v1.router import api_router
+from app.core.celery_app import configure_celery
 from app.core.config import get_settings
 from app.core.exceptions import (
 	http_exception_handler,
@@ -18,7 +21,14 @@ if not settings.RESEND_API_KEY and not settings.ALLOW_STDOUT_EMAIL:
 
 	warnings.warn("Resend API key (RESEND_API_KEY) is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail.")
 
-app = FastAPI(title=settings.PROJECT_NAME)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> None:  # noqa: ARG001
+	configure_celery()
+	yield
+
+
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 # CORS
 app.add_middleware(
