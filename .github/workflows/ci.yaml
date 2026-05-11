@@ -68,16 +68,16 @@ jobs:
           OTP_PEPPER: ci-test-otp-pepper-not-for-production
         run: uv run pytest --tb=short -q
 
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    security:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.30.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: 1
-          format: table
+        - name: Run Trivy vulnerability scanner
+          uses: aquasecurity/trivy-action@v0.36.0
+          with:
+            scan-type: fs
+            scan-ref: .
+            severity: HIGH,CRITICAL
+            exit-code: 1
+            format: table
