@@ -1,4 +1,3 @@
-import asyncio
 import html
 import logging
 
@@ -8,7 +7,6 @@ from app.core.config import get_settings
 from app.models.otp import OtpPurpose
 
 logger = logging.getLogger(__name__)
-
 
 _PURPOSE_SUBJECTS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: "Verify your email",
@@ -50,46 +48,55 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 	)
 
 
-async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
+def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
 	"""Send the OTP to the user via Resend (or log it in dev mode)."""
 	settings = get_settings()
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
 	subject = _PURPOSE_SUBJECTS[purpose]
 	html_body = _render_html(first_name, code, purpose, expires_minutes)
-	text = _render_text(first_name, code, purpose, expires_minutes)
+	text_body = _render_text(first_name, code, purpose, expires_minutes)
 
 	if not settings.RESEND_API_KEY:
 		if settings.ALLOW_STDOUT_EMAIL:
 			logger.info(
-				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: %s",
-				to_email,
+				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: [REDACTED]",
+				_mask_email(to_email),
 				purpose.value,
-				code,
 			)
 		else:
 			logger.warning(
-				"RESEND_API_KEY not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) failed.",
-				to_email,
+				"Resend API key not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) was not sent.",
+				_mask_email(to_email),
 				purpose.value,
 			)
 		return
+
+	resend.api_key = settings.RESEND_API_KEY
 
 	from_address = (
 		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
 		if settings.RESEND_FROM_NAME
 		else settings.RESEND_FROM_EMAIL
 	)
+
 	try:
-		await asyncio.to_thread(
-			resend.Emails.send,
+		resend.Emails.send(
 			{
 				"from": from_address,
 				"to": [to_email],
 				"subject": subject,
+				"text": text_body,
 				"html": html_body,
-				"text": text,
-			},
+			}
 		)
 	except Exception:
-		logger.exception("Failed to send OTP email to %s (purpose=%s)", to_email, purpose.value)
+		logger.exception("Failed to send OTP email to %s (purpose=%s)", _mask_email(to_email), purpose.value)
 		raise
+
+
+def _mask_email(email: str) -> str:
+	"""Redact all but the first two characters of the local part."""
+	if "@" in email:
+		local, domain = email.split("@", 1)
+		return f"{local[:2]}***@{domain}"
+	return "***"
