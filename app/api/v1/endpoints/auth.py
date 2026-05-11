@@ -1,4 +1,3 @@
-import asyncio
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, status
@@ -8,6 +7,7 @@ from sqlalchemy import select
 from app.api.deps import CurrentUser, DBSession
 from app.core.config import get_settings
 from app.core.responses import SuccessResponse
+from app.models.otp import OtpPurpose
 from app.models.user import User
 from app.schemas.auth import (
 	ForgotPasswordRequest,
@@ -33,7 +33,7 @@ from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
-from app.services.email import send_password_reset_email
+from app.services.email_tasks import send_otp_email_task, send_password_reset_email_task
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
@@ -54,7 +54,13 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 	The user is created in an unverified state. They must call `/auth/verify-otp`
 	with the emailed code to activate the account before they can log in.
 	"""
-	user = await signup_user(session, payload)
+	user, code = await signup_user(session, payload)
+	send_otp_email_task.delay(
+		to_email=user.email,
+		first_name=user.first_name or user.email.split("@")[0],
+		code=code,
+		purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+	)
 	return SuccessResponse(
 		message="Verification code sent to your email.",
 		data=OtpDispatchResponse(
@@ -117,7 +123,13 @@ async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessRe
 )
 async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
 	"""Re-send the email-verification OTP (e.g. if it expired)."""
-	user = await resend_otp(session, email=payload.email)
+	user, code = await resend_otp(session, email=payload.email)
+	send_otp_email_task.delay(
+		to_email=user.email,
+		first_name=user.first_name or user.email.split("@")[0],
+		code=code,
+		purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+	)
 	return SuccessResponse(
 		message="A new code has been sent to your email.",
 		data=OtpDispatchResponse(
@@ -152,7 +164,7 @@ async def forgot_password(request: ForgotPasswordRequest, session: DBSession) ->
 		# Commit the token to DB first, so the email contains a valid reference
 		await session.commit()
 		# Send the email in the background to mask the delay and mitigate enumeration
-		asyncio.create_task(send_password_reset_email(user.email, raw))
+		send_password_reset_email_task.delay(user.email, raw)
 	return SuccessResponse(message="If this email is registered, you'll receive a reset link shortly.")
 
 

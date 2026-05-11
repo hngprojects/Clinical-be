@@ -36,21 +36,21 @@ class Settings(BaseSettings):
 	OTP_MAX_ATTEMPTS: int = 5
 	OTP_PEPPER: str = Field(min_length=32)
 
-	SMTP_HOST: str = "smtp.gmail.com"
-	SMTP_PORT: int = 587
-	SMTP_USERNAME: str | None = None
-	SMTP_PASSWORD: str | None = None
-	SMTP_FROM_EMAIL: str = ""
-	SMTP_FROM_NAME: str = "Clinsights"
+	RESEND_API_KEY: str | None = None
+	RESEND_FROM_EMAIL: str = ""
+	RESEND_FROM_NAME: str = "Clinsights"
 	ALLOW_STDOUT_EMAIL: bool = False
 
-	@field_validator("SMTP_FROM_EMAIL", mode="after")
+	CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+	CELERY_RESULT_BACKEND: str | None = None
+
+	@field_validator("RESEND_FROM_EMAIL", mode="after")
 	@classmethod
-	def smtp_from_email_required_when_smtp_enabled(cls, v: str, info: object) -> str:
-		"""Require a non-empty SMTP_FROM_EMAIL when SMTP credentials are configured."""
+	def resend_from_email_required_when_resend_enabled(cls, v: str, info: object) -> str:
+		"""Require a non-empty RESEND_FROM_EMAIL when Resend is configured."""
 		data = getattr(info, "data", {})
-		if data.get("SMTP_USERNAME") and not v:
-			raise ValueError("SMTP_FROM_EMAIL must be set when SMTP_USERNAME is configured")
+		if data.get("RESEND_API_KEY") and not v:
+			raise ValueError("RESEND_FROM_EMAIL must be set when RESEND_API_KEY is configured")
 		return v
 
 	# Password reset

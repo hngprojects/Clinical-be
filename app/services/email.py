@@ -1,9 +1,7 @@
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from urllib.parse import urlencode
 
-import aiosmtplib
+import resend
 
 from app.core.config import get_settings
 from app.core.exceptions import EmailError
@@ -12,13 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 async def send_password_reset_email(to_email: str, reset_token: str) -> None:
-	"""Send a password-reset link via SMTP.
+	"""Send a password-reset link via Resend.
 
-	Raises EmailError if SMTP credentials are not configured or the send fails.
+	Raises EmailError if Resend credentials are not configured or the send fails.
 	"""
 	settings = get_settings()
 
-	if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+	if not settings.RESEND_API_KEY:
 		if settings.ALLOW_STDOUT_EMAIL:
 			logger.info("STDOUT EMAIL [Password Reset] -> to: %s, token: %s", to_email, reset_token)
 			return
@@ -27,9 +25,9 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 	link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?{urlencode({'token': reset_token})}"
 
 	from_address = (
-		f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-		if settings.SMTP_FROM_NAME
-		else settings.SMTP_FROM_EMAIL
+		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
+		if settings.RESEND_FROM_NAME
+		else settings.RESEND_FROM_EMAIL
 	)
 
 	subject = "Reset your Clinsights password"
@@ -49,21 +47,16 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 </div>
 """.strip()
 
-	msg = MIMEMultipart("alternative")
-	msg["Subject"] = subject
-	msg["From"] = from_address
-	msg["To"] = to_email
-	msg.attach(MIMEText(text_body, "plain"))
-	msg.attach(MIMEText(html_body, "html"))
-
 	try:
-		await aiosmtplib.send(
-			msg,
-			hostname=settings.SMTP_HOST,
-			port=settings.SMTP_PORT,
-			username=settings.SMTP_USERNAME,
-			password=settings.SMTP_PASSWORD,
-			start_tls=True,
+		resend.api_key = settings.RESEND_API_KEY
+		resend.Emails.send(
+			{
+				"from": from_address,
+				"to": [to_email],
+				"subject": subject,
+				"text": text_body,
+				"html": html_body,
+			}
 		)
 	except Exception as e:
 		raise EmailError(message=f"Failed to send password reset email to {to_email}: {e}") from e

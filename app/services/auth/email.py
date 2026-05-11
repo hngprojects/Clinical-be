@@ -1,9 +1,7 @@
 import html
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
-import aiosmtplib
+import resend
 
 from app.core.config import get_settings
 from app.models.otp import OtpPurpose
@@ -52,14 +50,14 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 
 
 async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
-	"""Send the OTP to the user via SMTP (or log it in dev mode)."""
+	"""Send the OTP to the user via Resend (or log it in dev mode)."""
 	settings = get_settings()
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
 	subject = _PURPOSE_SUBJECTS[purpose]
 	html_body = _render_html(first_name, code, purpose, expires_minutes)
 	text_body = _render_text(first_name, code, purpose, expires_minutes)
 
-	if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+	if not settings.RESEND_API_KEY:
 		if settings.ALLOW_STDOUT_EMAIL:
 			logger.info(
 				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: %s",
@@ -69,33 +67,28 @@ async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: 
 			)
 		else:
 			logger.warning(
-				"SMTP credentials not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) was not sent.",
+				"Resend API key not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) was not sent.",
 				to_email,
 				purpose.value,
 			)
 		return
 
 	from_address = (
-		f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
-		if settings.SMTP_FROM_NAME
-		else settings.SMTP_FROM_EMAIL
+		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
+		if settings.RESEND_FROM_NAME
+		else settings.RESEND_FROM_EMAIL
 	)
 
-	msg = MIMEMultipart("alternative")
-	msg["Subject"] = subject
-	msg["From"] = from_address
-	msg["To"] = to_email
-	msg.attach(MIMEText(text_body, "plain"))
-	msg.attach(MIMEText(html_body, "html"))
-
 	try:
-		await aiosmtplib.send(
-			msg,
-			hostname=settings.SMTP_HOST,
-			port=settings.SMTP_PORT,
-			username=settings.SMTP_USERNAME,
-			password=settings.SMTP_PASSWORD,
-			start_tls=True,
+		resend.api_key = settings.RESEND_API_KEY
+		resend.Emails.send(
+			{
+				"from": from_address,
+				"to": [to_email],
+				"subject": subject,
+				"text": text_body,
+				"html": html_body,
+			}
 		)
 	except Exception:
 		logger.exception("Failed to send OTP email to %s (purpose=%s)", to_email, purpose.value)
