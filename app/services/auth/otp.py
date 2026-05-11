@@ -4,11 +4,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import get_settings
 from app.models.otp import OtpCode, OtpPurpose
+from app.repositories.otp import OtpRepository
 
 
 def _generate_numeric_code(length: int) -> str:
@@ -28,7 +26,7 @@ def _codes_match(code: str, code_hash: str) -> bool:
 
 
 async def create_otp_for_user(
-	session: AsyncSession,
+	otp_repo: OtpRepository,
 	*,
 	user_id: UUID,
 	purpose: OtpPurpose,
@@ -40,15 +38,7 @@ async def create_otp_for_user(
 	"""
 	now = datetime.now(timezone.utc)
 
-	await session.execute(
-		update(OtpCode)
-		.where(
-			OtpCode.user_id == user_id,
-			OtpCode.purpose == purpose,
-			OtpCode.consumed_at.is_(None),
-		)
-		.values(consumed_at=now)
-	)
+	await otp_repo.invalidate_active(user_id=user_id, purpose=purpose, consumed_at=now)
 
 	settings = get_settings()
 	code = _generate_numeric_code(settings.OTP_LENGTH)
@@ -58,8 +48,8 @@ async def create_otp_for_user(
 		purpose=purpose,
 		expires_at=now + timedelta(minutes=settings.OTP_EXPIRES_MINUTES),
 	)
-	session.add(otp)
-	await session.flush()
+	otp_repo.add(otp)
+	await otp_repo.flush()
 	return otp, code
 
 
@@ -68,7 +58,7 @@ class OtpVerificationError(Exception):
 
 
 async def verify_otp_for_user(
-	session: AsyncSession,
+	otp_repo: OtpRepository,
 	*,
 	user_id: UUID,
 	purpose: OtpPurpose,
@@ -81,21 +71,7 @@ async def verify_otp_for_user(
 	"""
 	now = datetime.now(timezone.utc)
 
-	# Lock the row for the rest of this transaction so concurrent verify
-	# requests cannot both read the same `attempts` value and lose increments,
-	# which would otherwise let an attacker bypass `OTP_MAX_ATTEMPTS`.
-	result = await session.execute(
-		select(OtpCode)
-		.where(
-			OtpCode.user_id == user_id,
-			OtpCode.purpose == purpose,
-			OtpCode.consumed_at.is_(None),
-		)
-		.order_by(OtpCode.created_at.desc())
-		.limit(1)
-		.with_for_update()
-	)
-	otp = result.scalar_one_or_none()
+	otp = await otp_repo.get_latest_active(user_id=user_id, purpose=purpose, lock=True)
 
 	if otp is None:
 		raise OtpVerificationError("No active code found. Request a new one.")
@@ -111,7 +87,6 @@ async def verify_otp_for_user(
 
 	if not _codes_match(code, otp.code_hash):
 		otp.attempts += 1
-		# Burn the code if this attempt put us at the limit.
 		if otp.attempts >= settings.OTP_MAX_ATTEMPTS:
 			otp.consumed_at = now
 		raise OtpVerificationError("Invalid code.")
