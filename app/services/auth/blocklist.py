@@ -33,7 +33,5 @@ async def is_token_revoked(session: AsyncSession, jti: str) -> bool:
 	Uses a lightweight ``EXISTS``-style scalar query to avoid fetching the
 	full row.
 	"""
-	result = await session.execute(
-		select(TokenBlocklist.id).where(TokenBlocklist.jti == jti).limit(1)
-	)
+	result = await session.execute(select(TokenBlocklist.id).where(TokenBlocklist.jti == jti).limit(1))
 	return result.scalar_one_or_none() is not None

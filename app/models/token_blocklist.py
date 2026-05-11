@@ -22,18 +22,12 @@ class TokenBlocklist(Base):
 	# delete rows whose natural expiry has already passed.
 	__table_args__ = (Index("ix_token_blocklist_expires_at", "expires_at"),)
 
-	id: Mapped[uuid.UUID] = mapped_column(
-		UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-	)
-	jti: Mapped[str] = mapped_column(
-		String(36), nullable=False, unique=True, index=True
-	)
+	id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+	jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True, index=True)
 	user_id: Mapped[uuid.UUID] = mapped_column(
 		UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
 	)
-	expires_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True), nullable=False
-	)
+	expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 	created_at: Mapped[datetime] = mapped_column(
 		DateTime(timezone=True),
 		nullable=False,
