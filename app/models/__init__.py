@@ -6,6 +6,7 @@ from app.models.lab_result import LabResult
 from app.models.medical_case import MedicalCase
 from app.models.notification import Notification
 from app.models.otp import OtpCode, OtpPurpose
+from app.models.token_blocklist import TokenBlocklist
 from app.models.user import User, UserRole
 from app.models.waitlist import Waitlist
 
@@ -14,6 +15,7 @@ __all__ = [
 	"AIInterpretation",
 	"PasswordResetToken",
 	"RefreshToken",
+	"TokenBlocklist",
 	"Chat",
 	"LabResult",
 	"MedicalCase",
