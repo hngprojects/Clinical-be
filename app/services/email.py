@@ -8,8 +8,12 @@ from app.core.exceptions import EmailError
 
 logger = logging.getLogger(__name__)
 
+_settings = get_settings()
+if _settings.RESEND_API_KEY:
+	resend.api_key = _settings.RESEND_API_KEY
 
-async def send_password_reset_email(to_email: str, reset_token: str) -> None:
+
+def send_password_reset_email(to_email: str, reset_token: str) -> None:
 	"""Send a password-reset link via Resend.
 
 	Raises EmailError if Resend credentials are not configured or the send fails.
@@ -18,7 +22,7 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 
 	if not settings.RESEND_API_KEY:
 		if settings.ALLOW_STDOUT_EMAIL:
-			logger.info("STDOUT EMAIL [Password Reset] -> to: %s, token: %s", to_email, reset_token)
+			logger.info("STDOUT EMAIL [Password Reset] -> to: %s, token: [REDACTED]", _mask_email(to_email))
 			return
 		raise EmailError(message="Email service not configured.")
 
@@ -48,7 +52,6 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 """.strip()
 
 	try:
-		resend.api_key = settings.RESEND_API_KEY
 		resend.Emails.send(
 			{
 				"from": from_address,
@@ -59,4 +62,12 @@ async def send_password_reset_email(to_email: str, reset_token: str) -> None:
 			}
 		)
 	except Exception as e:
-		raise EmailError(message=f"Failed to send password reset email to {to_email}: {e}") from e
+		raise EmailError(message=f"Failed to send password reset email: {e}") from e
+
+
+def _mask_email(email: str) -> str:
+	"""Redact all but the first two characters of the local part."""
+	if "@" in email:
+		local, domain = email.split("@", 1)
+		return f"{local[:2]}***@{domain}"
+	return "***"

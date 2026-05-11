@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, status
@@ -33,12 +34,14 @@ from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
-from app.services.email_tasks import send_otp_email_task, send_password_reset_email_task
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
 	get_or_create_google_user,
 )
+from app.tasks.email import send_otp_email_task, send_password_reset_email_task
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,12 +58,15 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 	with the emailed code to activate the account before they can log in.
 	"""
 	user, code = await signup_user(session, payload)
-	send_otp_email_task.delay(
-		to_email=user.email,
-		first_name=user.first_name or user.email.split("@")[0],
-		code=code,
-		purpose=OtpPurpose.EMAIL_VERIFICATION.value,
-	)
+	try:
+		send_otp_email_task.delay(
+			to_email=user.email,
+			first_name=user.first_name or user.email.split("@")[0],
+			code=code,
+			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+		)
+	except Exception:
+		logger.exception("Failed to enqueue OTP email for %s", user.email)
 	return SuccessResponse(
 		message="Verification code sent to your email.",
 		data=OtpDispatchResponse(
@@ -124,12 +130,15 @@ async def verify_otp(payload: VerifyOtpRequest, session: DBSession) -> SuccessRe
 async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
 	"""Re-send the email-verification OTP (e.g. if it expired)."""
 	user, code = await resend_otp(session, email=payload.email)
-	send_otp_email_task.delay(
-		to_email=user.email,
-		first_name=user.first_name or user.email.split("@")[0],
-		code=code,
-		purpose=OtpPurpose.EMAIL_VERIFICATION.value,
-	)
+	try:
+		send_otp_email_task.delay(
+			to_email=user.email,
+			first_name=user.first_name or user.email.split("@")[0],
+			code=code,
+			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+		)
+	except Exception:
+		logger.exception("Failed to enqueue OTP email for %s", user.email)
 	return SuccessResponse(
 		message="A new code has been sent to your email.",
 		data=OtpDispatchResponse(
@@ -161,10 +170,11 @@ async def forgot_password(request: ForgotPasswordRequest, session: DBSession) ->
 	user = await session.scalar(select(User).where(User.email == request.email.strip().lower()))
 	if user:
 		raw = await create_password_reset(session, user)
-		# Commit the token to DB first, so the email contains a valid reference
 		await session.commit()
-		# Send the email in the background to mask the delay and mitigate enumeration
-		send_password_reset_email_task.delay(user.email, raw)
+		try:
+			send_password_reset_email_task.delay(user.email, raw)
+		except Exception:
+			logger.exception("Failed to enqueue password reset email for %s", user.email)
 	return SuccessResponse(message="If this email is registered, you'll receive a reset link shortly.")
 
 

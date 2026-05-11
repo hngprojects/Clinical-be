@@ -11,14 +11,14 @@ def create_celery_app() -> Celery:
 		"clinsights",
 		broker=settings.CELERY_BROKER_URL,
 		backend=settings.CELERY_RESULT_BACKEND,
-		include=["app.services.email_tasks"],
+		include=["app.tasks.email"],
 	)
 	app.conf.update(
 		task_acks_late=True,
 		worker_prefetch_multiplier=1,
 		task_default_queue="default",
 		task_routes={
-			"app.services.email_tasks.*": {"queue": EMAIL_QUEUE},
+			"app.tasks.email.*": {"queue": EMAIL_QUEUE},
 		},
 	)
 	return app

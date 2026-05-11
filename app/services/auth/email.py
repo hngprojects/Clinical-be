@@ -8,6 +8,9 @@ from app.models.otp import OtpPurpose
 
 logger = logging.getLogger(__name__)
 
+_settings = get_settings()
+if _settings.RESEND_API_KEY:
+	resend.api_key = _settings.RESEND_API_KEY
 
 _PURPOSE_SUBJECTS: dict[OtpPurpose, str] = {
 	OtpPurpose.EMAIL_VERIFICATION: "Verify your email",
@@ -49,7 +52,7 @@ def _render_text(first_name: str, code: str, purpose: OtpPurpose, expires_minute
 	)
 
 
-async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
+def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPurpose) -> None:
 	"""Send the OTP to the user via Resend (or log it in dev mode)."""
 	settings = get_settings()
 	expires_minutes = settings.OTP_EXPIRES_MINUTES
@@ -60,15 +63,14 @@ async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: 
 	if not settings.RESEND_API_KEY:
 		if settings.ALLOW_STDOUT_EMAIL:
 			logger.info(
-				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: %s",
-				to_email,
+				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: [REDACTED]",
+				_mask_email(to_email),
 				purpose.value,
-				code,
 			)
 		else:
 			logger.warning(
 				"Resend API key not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) was not sent.",
-				to_email,
+				_mask_email(to_email),
 				purpose.value,
 			)
 		return
@@ -80,7 +82,6 @@ async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: 
 	)
 
 	try:
-		resend.api_key = settings.RESEND_API_KEY
 		resend.Emails.send(
 			{
 				"from": from_address,
@@ -91,5 +92,13 @@ async def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: 
 			}
 		)
 	except Exception:
-		logger.exception("Failed to send OTP email to %s (purpose=%s)", to_email, purpose.value)
+		logger.exception("Failed to send OTP email to %s (purpose=%s)", _mask_email(to_email), purpose.value)
 		raise
+
+
+def _mask_email(email: str) -> str:
+	"""Redact all but the first two characters of the local part."""
+	if "@" in email:
+		local, domain = email.split("@", 1)
+		return f"{local[:2]}***@{domain}"
+	return "***"
