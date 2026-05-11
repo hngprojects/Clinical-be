@@ -8,6 +8,7 @@ from app.models.notification import Notification
 from app.models.otp import OtpCode, OtpPurpose
 from app.models.user import User, UserRole
 from app.models.waitlist import Waitlist
+from app.models.token_blacklist import TokenBlacklist
 
 __all__ = [
 	"Base",
@@ -23,4 +24,5 @@ __all__ = [
 	"User",
 	"UserRole",
 	"Waitlist",
+	"TokenBlacklist"
 ]

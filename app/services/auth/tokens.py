@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
+import uuid
 
 import jwt
 from sqlalchemy import delete, update
@@ -36,6 +37,7 @@ def create_access_token(
 			"iat": int(now.timestamp()),
 			"exp": int(expires_at.timestamp()),
 			"type": "access",
+			"jti": str(uuid.uuid4()),
 		}
 	)
 

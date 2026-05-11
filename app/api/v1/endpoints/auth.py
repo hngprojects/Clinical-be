@@ -1,16 +1,19 @@
 import asyncio
 from typing import Annotated
 from urllib.parse import urlencode
+from datetime import datetime, timezone 
 
-from fastapi import APIRouter, Cookie, HTTPException, status
+from fastapi import APIRouter, Cookie, HTTPException, status, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, DBSession
+from app.api.deps import CurrentUser, DBSession, bearer_scheme
 from app.core.config import get_settings
 from app.core.exceptions import UnauthorizedError
 from app.core.responses import SuccessResponse
 from app.models.user import User
+from app.models.token_blacklist import TokenBlacklist
 from app.schemas.auth import (
 	ForgotPasswordRequest,
 	LoginRequest,
@@ -29,7 +32,7 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token, create_refresh_token, refresh_all_tokens
+from app.services.auth.tokens import create_access_token, create_refresh_token, refresh_all_tokens, revoke_refresh_token, decode_access_token
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
@@ -274,3 +277,52 @@ async def refresh(
 			expires_in=tokens["expires_in"],
 		),
 	)
+
+
+@router.post("/logout", response_model=SuccessResponse)
+async def logout(
+	current_user: CurrentUser,
+	session: DBSession,
+	response: Response,
+	credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+	refresh_token: Annotated[str | None, Cookie()] = None,
+) -> SuccessResponse:
+	"""
+	Revoke both the access token and the refresh token in a single call.
+
+	- The access token JTI is added to the blacklist table so any further
+	  requests using it are rejected immediately, before natural expiry.
+	- The refresh token (read from the httpOnly cookie) is marked as revoked
+	  in the refresh_tokens table so it cannot be used to mint new tokens.
+	- The refresh token cookie is cleared from the browser.
+	"""
+	# 1. Blacklist the access token
+	if credentials:
+		try:
+			payload = decode_access_token(credentials.credentials)
+			jti = payload.get("jti")
+			exp = payload.get("exp")
+			if jti and exp:
+				blacklisted = TokenBlacklist(
+					jti=jti,
+					expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
+				)
+				session.add(blacklisted)
+		except Exception:
+			# Token already invalid — continue anyway, user is logging out
+			pass
+
+	# 2. Revoke the refresh token from the cookie
+	if refresh_token:
+		try:
+			await revoke_refresh_token(refresh_token, session)
+		except Exception:
+			# Already revoked or not found — still fine
+			pass
+
+	await session.commit()
+
+	# 3. Clear the refresh token cookie from the browser
+	response.delete_cookie(key="refresh_token")
+
+	return SuccessResponse(message="Logged out successfully.")
