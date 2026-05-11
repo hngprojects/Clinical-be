@@ -47,9 +47,60 @@ find API routes, configuration, migrations, and tests quickly.
 │   ├── services/
 │   └── main.py
 ├── tests/
+│   ├── smoke_test.py
+│   ├── test_health.py
 ├── alembic.ini
 ├── pyproject.toml
+├── uv.lock
 └── README.md
+```
+
+## Testing
+
+Install dev dependencies:
+
+```bash
+uv sync
+```
+
+Run the app
+
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+### Smoke tests
+
+Validates every endpoint for correct status codes, response shape, and edge cases (bad input, wrong credentials, anti-enumeration, etc.). Requires your server to be running.
+
+```bash
+pytest tests/smoke_test.py -v --base-url=http://localhost:8000
+```
+
+### Full happy path
+
+The happy-path tests (signup → verify OTP → login → `/me`) are skipped by default because they need a real OTP. To run them:
+
+1. Start the server with `ALLOW_STDOUT_EMAIL=true` so OTPs print to stdout instead of being emailed
+2. Trigger a signup to get an OTP in the logs
+3. Pass it via `TEST_OTP`:
+
+```bash
+TEST_OTP=123456 pytest tests/smoke_test.py -v --base-url=http://localhost:8000
+```
+
+### Unit / integration tests
+
+The original `test_health.py` runs against the app directly without a live server:
+
+```bash
+uv run pytest tests/test_health.py -v
+```
+
+Or run everything at once:
+
+```bash
+uv run pytest -v
 ```
 
 ## Contributing
