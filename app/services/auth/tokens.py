@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID
 
 import jwt
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -12,7 +12,7 @@ from app.core.exceptions import UnauthorizedError
 from app.core.security import hash_opaque_token
 from app.models.auth import RefreshToken
 from app.models.user import User
-from app.services.auth.blocklist import is_token_revoked, revoke_token
+from app.services.auth.blocklist import revoke_token
 
 
 def create_access_token(
