@@ -1,16 +1,16 @@
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.exceptions import ConflictError, UnauthorizedError
 from app.models.user import User
+from app.repositories.user import UserRepository
 
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 
 async def exchange_google_code(code: str) -> dict:
+	"""Exchange an authorization code for Google tokens."""
 	settings = get_settings()
 	payload = {
 		"code": code,
@@ -24,15 +24,13 @@ async def exchange_google_code(code: str) -> dict:
 		response = await client.post(GOOGLE_TOKEN_URL, data=payload)
 
 	if response.status_code != 200:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Failed to exchange Google authorization code",
-		)
+		raise UnauthorizedError("Failed to exchange Google authorization code")
 
 	return response.json()
 
 
 async def fetch_google_user_info(access_token: str) -> dict:
+	"""Fetch user profile from Google using an access token."""
 	headers = {
 		"Authorization": f"Bearer {access_token}",
 	}
@@ -41,24 +39,22 @@ async def fetch_google_user_info(access_token: str) -> dict:
 		response = await client.get(GOOGLE_USERINFO_URL, headers=headers)
 
 	if response.status_code != 200:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Failed to fetch Google user information",
-		)
+		raise UnauthorizedError("Failed to fetch Google user information")
 
 	return response.json()
 
 
 async def get_or_create_google_user(
-	db: AsyncSession,
+	user_repo: UserRepository,
 	google_user: dict,
 ) -> User:
+	"""Find or create a user from Google profile data."""
 	google_id = google_user.get("sub")
 	email = google_user.get("email")
 	email_verified = google_user.get("email_verified", False)
 	given_name = google_user.get("given_name") or ""
 	family_name = google_user.get("family_name") or ""
-	# Fallback: split name if given_name/family_name not provided
+
 	if not given_name:
 		full = google_user.get("name") or email or ""
 		parts = full.split(" ", 1)
@@ -66,37 +62,26 @@ async def get_or_create_google_user(
 		family_name = parts[1] if len(parts) > 1 else given_name
 
 	if not google_id or not email:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Google user profile is missing required fields",
-		)
+		raise UnauthorizedError("Google user profile is missing required fields")
 
 	if not email_verified:
-		raise HTTPException(
-			status_code=status.HTTP_400_BAD_REQUEST,
-			detail="Google email address is not verified",
-		)
+		raise UnauthorizedError("Google email address is not verified")
 
-	result = await db.execute(select(User).where(User.google_id == google_id))
-	user = result.scalar_one_or_none()
-
+	# Check if user already exists by Google ID
+	user = await user_repo.get_by_google_id(google_id)
 	if user:
 		user.email = email
 		user.first_name = given_name
 		user.last_name = family_name
 		user.is_email_verified = True
-		await db.commit()
-		await db.refresh(user)
+		await user_repo.commit()
+		await user_repo.refresh(user)
 		return user
 
-	existing_email_result = await db.execute(select(User).where(User.email == email))
-	existing_email_user = existing_email_result.scalar_one_or_none()
-
-	if existing_email_user:
-		raise HTTPException(
-			status_code=status.HTTP_409_CONFLICT,
-			detail="An account with this email already exists",
-		)
+	# Check for email collision
+	existing = await user_repo.get_by_email(email)
+	if existing:
+		raise ConflictError("An account with this email already exists")
 
 	user = User(
 		google_id=google_id,
@@ -105,9 +90,8 @@ async def get_or_create_google_user(
 		last_name=family_name,
 		is_email_verified=True,
 	)
-
-	db.add(user)
-	await db.commit()
-	await db.refresh(user)
+	user_repo.add(user)
+	await user_repo.commit()
+	await user_repo.refresh(user)
 
 	return user
