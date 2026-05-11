@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import DBSession
@@ -11,7 +11,9 @@ router = APIRouter()
 
 
 @router.post("/", response_model=SuccessResponse[WaitlistResponse])
-async def join_waitlist(data: WaitlistCreate, session: DBSession) -> SuccessResponse[WaitlistResponse]:
+async def join_waitlist(
+	data: WaitlistCreate, session: DBSession, background_tasks: BackgroundTasks
+) -> SuccessResponse[WaitlistResponse]:
 	"""Join the waitlist."""
 	try:
 		waitlist_entry = Waitlist(email=data.email)
@@ -19,8 +21,8 @@ async def join_waitlist(data: WaitlistCreate, session: DBSession) -> SuccessResp
 		await session.commit()
 		await session.refresh(waitlist_entry)
 
-		# Send the waitlist welcome email
-		await send_waitlist_email(waitlist_entry.email)
+		# Send the waitlist welcome email in the background
+		background_tasks.add_task(send_waitlist_email, waitlist_entry.email)
 
 		return SuccessResponse(
 			message="Successfully joined the waitlist",
