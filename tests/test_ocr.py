@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -24,7 +23,9 @@ def test_ocr_extract_invalid_file_type():
 @patch("app.services.ocr.client")
 def test_ocr_extract_success(mock_openai):
     mock_response = MagicMock()
-    mock_response.choices[0].message.content = '{"tests": [{"name": "Haemoglobin", "value": "13.5", "unit": "g/dL", "reference_range": "12.0 - 16.0"}]}'
+    mock_response.choices[
+        0
+    ].message.content = '{"tests": [{"name": "Haemoglobin", "value": "13.5", "unit": "g/dL", "reference_range": "12.0 - 16.0"}]}'
     mock_openai.chat.completions.create.return_value = mock_response
 
     response = client.post(
