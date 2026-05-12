@@ -6,35 +6,67 @@ on:
 
 jobs:
   deploy-staging:
+    name: Deploy to Staging
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/staging'
+    environment: staging
     steps:
-      - name: Deploy to Staging
+      - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd ~/Clinical-be
+
+            echo "Pulling latest staging code..."
+            git fetch origin staging
+            git checkout staging
             git pull origin staging
+
+            echo "Installing dependencies..."
             uv sync
+
+            echo "Running migrations..."
             uv run alembic upgrade head
-            pm2 restart staging
+
+            echo "Restarting application..."
+            pm2 restart staging || pm2 start "uv run uvicorn app.main:app --host 0.0.0.0 --port 8001" --name staging
+            pm2 save
+
+            echo "Deployment complete!"
 
   deploy-production:
+    name: Deploy to Production
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: production
     steps:
-      - name: Deploy to Production
+      - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd ~/Clinical-be
+
+            echo "Pulling latest production code..."
+            git fetch origin main
+            git checkout main
             git pull origin main
+
+            echo "Installing dependencies..."
             uv sync
+
+            echo "Running migrations..."
             uv run alembic upgrade head
-            pm2 restart production
+
+            echo "Restarting application..."
+            pm2 restart production || pm2 start "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000" --name production
+            pm2 save
+
+            echo "Deployment complete!"
