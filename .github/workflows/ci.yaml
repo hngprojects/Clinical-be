@@ -117,7 +117,7 @@ jobs:
           echo "Waiting for API..."
 
           for i in {1..30}; do
-            curl -f http://127.0.0.1:8000/health && break
+            curl -f http://127.0.0.1:8000/api/v1/health && break
             sleep 1
           done
 
