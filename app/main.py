@@ -16,10 +16,10 @@ from app.core.exceptions import (
 
 settings = get_settings()
 
-if not settings.RESEND_API_KEY and not settings.ALLOW_STDOUT_EMAIL:
+if not settings.RESEND_API_KEY and not settings.SMTP_HOST and not settings.ALLOW_STDOUT_EMAIL:
 	import warnings
 
-	warnings.warn("Resend API key (RESEND_API_KEY) is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail.")
+	warnings.warn("No email transport is configured. Set SMTP_HOST, RESEND_API_KEY, or ALLOW_STDOUT_EMAIL.")
 
 
 @asynccontextmanager

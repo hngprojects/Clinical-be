@@ -1,10 +1,8 @@
 import html
 import logging
-
-import resend
-
-from app.core.config import get_settings
 from app.models.otp import OtpPurpose
+from app.core.config import get_settings
+from app.services.mail_transport import mask_email, send_email_message
 
 logger = logging.getLogger(__name__)
 
@@ -56,47 +54,16 @@ def send_otp_email(*, to_email: str, first_name: str, code: str, purpose: OtpPur
 	html_body = _render_html(first_name, code, purpose, expires_minutes)
 	text_body = _render_text(first_name, code, purpose, expires_minutes)
 
-	if not settings.RESEND_API_KEY:
-		if settings.ALLOW_STDOUT_EMAIL:
-			logger.info(
-				"STDOUT EMAIL [OTP] -> to: %s, purpose: %s, code: [REDACTED]",
-				_mask_email(to_email),
-				purpose.value,
-			)
-		else:
-			logger.warning(
-				"Resend API key not set and ALLOW_STDOUT_EMAIL is False. OTP email to %s (purpose=%s) was not sent.",
-				_mask_email(to_email),
-				purpose.value,
-			)
-		return
-
-	resend.api_key = settings.RESEND_API_KEY
-
-	from_address = (
-		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
-		if settings.RESEND_FROM_NAME
-		else settings.RESEND_FROM_EMAIL
-	)
-
 	try:
-		resend.Emails.send(
-			{
-				"from": from_address,
-				"to": [to_email],
-				"subject": subject,
-				"text": text_body,
-				"html": html_body,
-			}
+		send_email_message(
+			to_email=to_email,
+			subject=subject,
+			text_body=text_body,
+			html_body=html_body,
+			stdout_summary=f"to: {mask_email(to_email)}, purpose: {purpose.value}, code: [REDACTED]",
 		)
 	except Exception:
 		logger.exception("Failed to send OTP email to %s (purpose=%s)", _mask_email(to_email), purpose.value)
 		raise
 
 
-def _mask_email(email: str) -> str:
-	"""Redact all but the first two characters of the local part."""
-	if "@" in email:
-		local, domain = email.split("@", 1)
-		return f"{local[:2]}***@{domain}"
-	return "***"

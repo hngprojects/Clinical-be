@@ -1,36 +1,21 @@
 import logging
 from urllib.parse import urlencode
 
-import resend
-
 from app.core.config import get_settings
 from app.core.exceptions import EmailError
+from app.services.mail_transport import mask_email, send_email_message
 
 logger = logging.getLogger(__name__)
 
 
 def send_password_reset_email(to_email: str, reset_token: str) -> None:
-	"""Send a password-reset link via Resend.
+	"""Send a password-reset link through the configured mail transport.
 
-	Raises EmailError if Resend credentials are not configured or the send fails.
+	Raises EmailError if no mail transport is configured or the send fails.
 	"""
 	settings = get_settings()
 
-	if not settings.RESEND_API_KEY:
-		if settings.ALLOW_STDOUT_EMAIL:
-			logger.info("STDOUT EMAIL [Password Reset] -> to: %s, token: [REDACTED]", _mask_email(to_email))
-			return
-		raise EmailError(message="Email service not configured.")
-
-	resend.api_key = settings.RESEND_API_KEY
-
 	link = f"{settings.FRONTEND_RESET_PASSWORD_URL}?{urlencode({'token': reset_token})}"
-
-	from_address = (
-		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
-		if settings.RESEND_FROM_NAME
-		else settings.RESEND_FROM_EMAIL
-	)
 
 	subject = "Reset your Clinsights password"
 	text_body = f"Reset your password by clicking the link below:\n\n{link}\n\nIf you didn't request this, you can safely ignore this email."
@@ -50,37 +35,19 @@ def send_password_reset_email(to_email: str, reset_token: str) -> None:
 """.strip()
 
 	try:
-		resend.Emails.send(
-			{
-				"from": from_address,
-				"to": [to_email],
-				"subject": subject,
-				"text": text_body,
-				"html": html_body,
-			}
+		send_email_message(
+			to_email=to_email,
+			subject=subject,
+			text_body=text_body,
+			html_body=html_body,
+			stdout_summary=f"to: {mask_email(to_email)}, token: [REDACTED]",
 		)
-	except Exception as e:
+	except EmailError as e:
 		raise EmailError(message=f"Failed to send password reset email: {e}") from e
 
 
 def send_contact_feedback_email(full_name: str, to_email: str, message: str) -> None:
-	"""Send a feedback acknowledgement email to the contact form submitter via Resend."""
-	settings = get_settings()
-
-	if not settings.RESEND_API_KEY:
-		if settings.ALLOW_STDOUT_EMAIL:
-			logger.info("STDOUT EMAIL [Contact Feedback] -> to: %s, name: %s", _mask_email(to_email), full_name)
-			return
-		raise EmailError(message="Email service not configured.")
-
-	resend.api_key = settings.RESEND_API_KEY
-
-	from_address = (
-		f"{settings.RESEND_FROM_NAME} <{settings.RESEND_FROM_EMAIL}>"
-		if settings.RESEND_FROM_NAME
-		else settings.RESEND_FROM_EMAIL
-	)
-
+	"""Send a feedback acknowledgement email to the contact form submitter."""
 	subject = "We received your message — Clinsights"
 	text_body = (
 		f"Hi {full_name},\n\n"
@@ -102,22 +69,14 @@ def send_contact_feedback_email(full_name: str, to_email: str, message: str) -> 
 """.strip()
 
 	try:
-		resend.Emails.send(
-			{
-				"from": from_address,
-				"to": [to_email],
-				"subject": subject,
-				"text": text_body,
-				"html": html_body,
-			}
+		send_email_message(
+			to_email=to_email,
+			subject=subject,
+			text_body=text_body,
+			html_body=html_body,
+			stdout_summary=f"to: {mask_email(to_email)}, name: {full_name}",
 		)
-	except Exception as e:
+	except EmailError as e:
 		raise EmailError(message=f"Failed to send contact feedback email: {e}") from e
 
 
-def _mask_email(email: str) -> str:
-	"""Redact all but the first two characters of the local part."""
-	if "@" in email:
-		local, domain = email.split("@", 1)
-		return f"{local[:2]}***@{domain}"
-	return "***"
