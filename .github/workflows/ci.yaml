@@ -103,7 +103,7 @@ jobs:
           OTP_PEPPER: ci-test-otp-pepper-not-for-production
         run: uv run alembic upgrade head
 
-      - name: Start API and run tests
+      - name: Run tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
           JWT_SECRET: ci-test-jwt-secret-not-for-production
@@ -111,14 +111,4 @@ jobs:
           ALLOW_STDOUT_EMAIL: "True"
           SMTP_USERNAME: ""
           SMTP_PASSWORD: ""
-        run: |
-          uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
-
-          echo "Waiting for API..."
-
-          for i in {1..30}; do
-            curl -f http://127.0.0.1:8000/health && break
-            sleep 1
-          done
-
-          uv run pytest --tb=short -q
+        run: uv run pytest --tb=short -q

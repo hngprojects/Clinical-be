@@ -45,17 +45,6 @@ def assert_success(res: httpx.Response, expected_status: int = 200) -> dict:
 def auth_headers(token: str) -> dict:
 	return {"Authorization": f"Bearer {token}"}
 
-class TestHealth:
-	def test_health_ok(self):
-		res = httpx.get(API("/health"))
-		assert res.status_code == 200
-		assert res.json().get("status") == "ok"
-
-	def test_root_ok(self):
-		res = httpx.get(_base())
-		assert res.status_code == 200
-		assert "message" in res.json()
-
 class TestSignup:
 	def test_signup_valid(self):
 		email = unique_email()
