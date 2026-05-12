@@ -24,13 +24,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/akinola/Clinical-be
+
+            export PATH="$HOME/.local/bin:$PATH"
             git pull origin staging
 
             echo "Installing dependencies..."
             uv sync
 
-            echo "Running migrations..."
-            uv run alembic upgrade head
+            echo "Exporting environment variables..."
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
             export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
@@ -40,6 +41,10 @@ jobs:
             export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
             export RESENT_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}"
+
+            echo "Running migrations..."
+            uv run alembic upgrade head
+
             pm2 start ecosystem.config.js --env staging
             pm2 start ecosystem.config.js --env staging --update-env
             pm2 save
@@ -61,6 +66,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/akinola/Clinical-be
+            export PATH="$HOME/.local/bin:$PATH"
             git pull origin main
 
             echo "Installing dependencies..."
