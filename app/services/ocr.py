@@ -76,19 +76,7 @@ def _validate_response(data: dict) -> dict:
 
 
 def extract_lab_results(file_bytes: bytes, filename: str) -> dict:
-	"""
-	Extract structured lab test results from an image using GPT-4o-mini vision.
-
-	Args:
-	    file_bytes: Raw bytes of the uploaded file.
-	    filename: Original filename (used to detect MIME type).
-
-	Returns:
-	    dict with 'tests' list, each containing name, value, unit, reference_range.
-
-	Raises:
-	    OCRExtractionError: On any failure.
-	"""
+	"""Extract structured lab test results from an image using GPT-4o-mini vision."""
 	try:
 		data_url, _ = _encode_file_to_base64_url(file_bytes, filename)
 
