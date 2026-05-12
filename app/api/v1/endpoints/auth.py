@@ -262,18 +262,13 @@ async def google_callback(
 
 	if not google_access_token:
 		raise HTTPException(status_code=400, detail="Google access token not found")
+	settings = get_settings()
 
 	google_user = await fetch_google_user_info(google_access_token)
 	user = await get_or_create_google_user(session, google_user)
 
 	app_access_token, ttl_seconds = create_access_token(user.id)
 
-	return SuccessResponse[GoogleAuthData](
-		message="Google authentication successful",
-		data=GoogleAuthData(
-			access_token=app_access_token,
-			refresh_token=app_access_token,  # Placeholder until refresh tokens are implemented
-			token_type="bearer",
-			user=UserResponse.model_validate(user),
-		),
-	)
+	redirect_url = f"{settings.FRONTEND_AUTH_CALLBACK_URL}?{urlencode({'access_token': app_access_token})}"
+
+	return RedirectResponse(url=redirect_url)

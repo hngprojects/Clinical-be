@@ -54,7 +54,8 @@ class Settings(BaseSettings):
 		return v
 
 	# Password reset
-	FRONTEND_RESET_PASSWORD_URL: str = ""
+	FRONTEND_RESET_PASSWORD_URL: str = "https://staging.clinical-tool.hng14.com/reset-password"
+	FRONTEND_AUTH_CALLBACK_URL: str = "https://staging.clinical-tool.hng14.com/auth/callback"
 	PASSWORD_RESET_TOKEN_EXPIRES_MINUTES: int = 60
 
 
