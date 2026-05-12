@@ -20,6 +20,7 @@ dependencies = [
     "resend>=0.8.0",
     "pip-audit>=2.10.0",
     "urllib3>=2.7.0",
+    "bandit>=1.9.4",
 ]
 
 [dependency-groups]
