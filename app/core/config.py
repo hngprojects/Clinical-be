@@ -28,7 +28,8 @@ class Settings(BaseSettings):
 	# JWT
 	JWT_SECRET: str = Field(min_length=32)
 	JWT_ALGORITHM: str = "HS256"
-	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 60
+	JWT_ACCESS_TOKEN_EXPIRES_MINUTES: int = 3
+	JWT_REFRESH_TOKEN_EXPIRES_MINUTES: int = 5
 
 	# OTP
 	OTP_LENGTH: int = 6
@@ -39,6 +40,8 @@ class Settings(BaseSettings):
 	RESEND_API_KEY: str | None = None
 	RESEND_FROM_EMAIL: str = ""
 	RESEND_FROM_NAME: str = "Clinsights"
+	COOKIE_SECURE: bool = False
+	COOKIE_SAMESITE: str = "strict"
 	ALLOW_STDOUT_EMAIL: bool = False
 
 	CELERY_BROKER_URL: str = "redis://localhost:6379/0"
@@ -54,7 +57,8 @@ class Settings(BaseSettings):
 		return v
 
 	# Password reset
-	FRONTEND_RESET_PASSWORD_URL: str = ""
+	FRONTEND_RESET_PASSWORD_URL: str = "https://staging.clinical-tool.hng14.com/reset-password"
+	FRONTEND_AUTH_CALLBACK_URL: str = "https://staging.clinical-tool.hng14.com/auth/callback"
 	PASSWORD_RESET_TOKEN_EXPIRES_MINUTES: int = 60
 
 	# AI interpretation

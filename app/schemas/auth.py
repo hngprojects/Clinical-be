@@ -54,9 +54,20 @@ class TokenResponse(BaseModel):
 	access_token: str
 	token_type: str = "bearer"
 	expires_in: int
-	user: UserResponse
+	user: UserResponse | None = None
 
 	model_config = ConfigDict(from_attributes=True)
+
+
+class TokenData(BaseModel):
+	user_id: str | None = None
+
+
+class TokenPair(BaseModel):
+	status: str = "success"
+	access_token: str
+	refresh_token: str
+	token_type: str = "bearer"
 
 
 class OtpDispatchResponse(BaseModel):
