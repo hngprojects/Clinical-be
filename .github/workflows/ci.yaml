@@ -3,14 +3,21 @@ name: CI
 on:
   push:
     branches: [dev, staging, main]
+  push:
+    branches: [dev, staging, main]
   pull_request:
+    branches: [dev, staging, main]
     branches: [dev, staging, main]
 
 jobs:
   # ============================================
   # LINT
   # ============================================
+  # ============================================
+  # LINT
+  # ============================================
   lint:
+    name: Lint
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +47,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -59,8 +68,6 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
           extra_args: --only-verified
 
   # ============================================
