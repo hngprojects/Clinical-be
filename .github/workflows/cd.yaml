@@ -30,6 +30,13 @@ jobs:
             uv sync
 
             echo "Running migrations..."
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export OTP_PEPPER="${{ secrets.OTP_PEPPER }}"
+            export REDIS_URL="${{ secrets.REDIS_URL }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
             uv run alembic upgrade head
 
             echo "Restarting application..."
@@ -63,6 +70,14 @@ jobs:
             uv sync
 
             echo "Running migrations..."
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export OTP_PEPPER="${{ secrets.OTP_PEPPER }}"
+            export REDIS_URL="${{ secrets.REDIS_URL }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+
             uv run alembic upgrade head
 
             echo "Restarting application..."
