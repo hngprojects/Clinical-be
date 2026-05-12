@@ -1,6 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from app.services.ocr import extract_lab_results, OCRExtractionError
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from app.services.ocr import OCRExtractionError, extract_lab_results
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 
 @router.post("/extract")
