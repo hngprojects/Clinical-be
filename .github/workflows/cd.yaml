@@ -12,15 +12,15 @@ jobs:
       - name: Deploy to Staging
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd ~/Clinical-be
             git pull origin staging
             uv sync
             uv run alembic upgrade head
-            sudo systemctl restart clinsight-staging
+            pm2 restart staging
 
   deploy-production:
     runs-on: ubuntu-latest
@@ -29,12 +29,12 @@ jobs:
       - name: Deploy to Production
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd ~/Clinical-be
             git pull origin main
             uv sync
             uv run alembic upgrade head
-            sudo systemctl restart clinsight-production
+            pm2 restart production

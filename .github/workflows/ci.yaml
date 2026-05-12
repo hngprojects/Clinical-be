@@ -1,69 +1,82 @@
 name: CI
 
 on:
-    pull_request:
-        branches: [main, dev, staging]
-    push:
-        branches: [main, dev, staging]
+  pull_request:
+    branches: [main, dev, staging]
+  push:
+    branches: [main, dev, staging]
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-            - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-              with:
-                  enable-cache: true
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Install dependencies
-              run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-            - name: Lint with Ruff
-              run: uv run ruff check --output-format=github .
+      - name: Lint with Ruff
+        run: uv run ruff check --output-format=github .
 
-            - name: Format check with Ruff
-              run: uv run ruff format --check .
+      - name: Format check with Ruff
+        run: uv run ruff format --check .
 
-    test:
-        runs-on: ubuntu-latest
-        services:
-            postgres:
-                image: postgres:17
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    POSTGRES_DB: test_db
-                ports:
-                    - 5433:5432
-                options: >-
-                    --health-cmd "pg_isready -U postgres"
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-        steps:
-            - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-            - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-              with:
-                  enable-cache: true
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Install dependencies
-              run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-            - name: Run migrations
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
-                  JWT_SECRET: ci-test-jwt-secret-not-for-production
-                  OTP_PEPPER: ci-test-otp-pepper-not-for-production
-              run: uv run alembic upgrade head
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
+          OTP_PEPPER: ci-test-otp-pepper-not-for-production
+        run: uv run alembic upgrade head
 
-            - name: Run tests
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
-                  JWT_SECRET: ci-test-jwt-secret-not-for-production
-                  OTP_PEPPER: ci-test-otp-pepper-not-for-production
-              run: uv run pytest --tb=short -q
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
+          OTP_PEPPER: ci-test-otp-pepper-not-for-production
+        run: uv run pytest --tb=short -q
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: table

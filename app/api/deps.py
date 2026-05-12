@@ -10,6 +10,7 @@ from app.core.exceptions import UnauthorizedError
 from app.db.session import get_session
 from app.models.token_blacklist import TokenBlacklist
 from app.models.user import User
+from app.services.auth.blocklist import is_token_revoked
 from app.services.auth.tokens import decode_access_token
 
 DBSession = Annotated[AsyncSession, Depends(get_session)]

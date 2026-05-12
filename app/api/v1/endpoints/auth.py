@@ -1,4 +1,5 @@
-import asyncio
+import logging
+from datetime import datetime, timezone
 from typing import Annotated
 from urllib.parse import urlencode
 from datetime import datetime, timezone 
@@ -6,12 +7,14 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Cookie, HTTPException, status, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse, Response
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DBSession, bearer_scheme
 from app.core.config import get_settings
 from app.core.exceptions import UnauthorizedError
 from app.core.responses import SuccessResponse
+from app.models.otp import OtpPurpose
 from app.models.user import User
 from app.models.token_blacklist import TokenBlacklist
 from app.schemas.auth import (
@@ -25,6 +28,7 @@ from app.schemas.auth import (
 	VerifyOtpRequest,
 )
 from app.schemas.user import UserResponse
+from app.services.auth.blocklist import is_token_revoked, revoke_token
 from app.services.auth.service import (
 	authenticate_credentials,
 	authenticate_otp,
@@ -32,19 +36,35 @@ from app.services.auth.service import (
 	resend_otp,
 	signup_user,
 )
-from app.services.auth.tokens import create_access_token, create_refresh_token, refresh_all_tokens, revoke_refresh_token, decode_access_token
+from app.services.auth.tokens import (
+	create_access_token,
+	create_refresh_token,
+	decode_access_token,
+	decode_refresh_token,
+	revoke_refresh_token,
+	rotate_all_tokens,
+)
 from app.services.auth_service import (
 	create_password_reset,
 	reset_password,
 )
-from app.services.email import send_password_reset_email
 from app.services.oauth import (
 	exchange_google_code,
 	fetch_google_user_info,
 	get_or_create_google_user,
 )
+from app.tasks.email import send_otp_email_task, send_password_reset_email_task
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _mask_email(email: str) -> str:
+	if "@" in email:
+		local, domain = email.split("@", 1)
+		return f"{local[:2]}***@{domain}"
+	return "***"
 
 
 @router.post(
@@ -58,9 +78,24 @@ async def signup(payload: SignupRequest, session: DBSession) -> SuccessResponse[
 	The user is created in an unverified state. They must call `/auth/verify-otp`
 	with the emailed code to activate the account before they can log in.
 	"""
-	user = await signup_user(session, payload)
+	user, code = await signup_user(session, payload)
+	email_dispatched = False
+	try:
+		send_otp_email_task.delay(
+			to_email=user.email,
+			first_name=user.first_name or user.email.split("@")[0],
+			code=code,
+			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+		)
+		email_dispatched = True
+	except Exception:
+		logger.exception("Failed to enqueue OTP email for %s", _mask_email(user.email))
 	return SuccessResponse(
-		message="Verification code sent to your email.",
+		message=(
+			"Verification code sent to your email."
+			if email_dispatched
+			else "Verification code created. If you do not receive an email, request a new code."
+		),
 		data=OtpDispatchResponse(
 			email=user.email,
 			expires_in_seconds=otp_ttl_seconds(),
@@ -77,6 +112,7 @@ async def login(payload: LoginRequest, session: DBSession, response: Response) -
 
 	The account must have a verified email before login is permitted.
 	"""
+
 	user, access_token, ttl_seconds, refresh_token = await authenticate_credentials(
 		session, email=payload.email, password=payload.password
 	)
@@ -143,9 +179,24 @@ async def verify_otp(
 )
 async def resend(payload: ResendOtpRequest, session: DBSession) -> SuccessResponse[OtpDispatchResponse]:
 	"""Re-send the email-verification OTP (e.g. if it expired)."""
-	user = await resend_otp(session, email=payload.email)
+	user, code = await resend_otp(session, email=payload.email)
+	email_dispatched = False
+	try:
+		send_otp_email_task.delay(
+			to_email=user.email,
+			first_name=user.first_name or user.email.split("@")[0],
+			code=code,
+			purpose=OtpPurpose.EMAIL_VERIFICATION.value,
+		)
+		email_dispatched = True
+	except Exception:
+		logger.exception("Failed to enqueue OTP email for %s", _mask_email(user.email))
 	return SuccessResponse(
-		message="A new code has been sent to your email.",
+		message=(
+			"A new code has been sent to your email."
+			if email_dispatched
+			else "A new code was created. If you do not receive an email, request another code."
+		),
 		data=OtpDispatchResponse(
 			email=user.email,
 			expires_in_seconds=otp_ttl_seconds(),
@@ -175,10 +226,11 @@ async def forgot_password(request: ForgotPasswordRequest, session: DBSession) ->
 	user = await session.scalar(select(User).where(User.email == request.email.strip().lower()))
 	if user:
 		raw = await create_password_reset(session, user)
-		# Commit the token to DB first, so the email contains a valid reference
 		await session.commit()
-		# Send the email in the background to mask the delay and mitigate enumeration
-		asyncio.create_task(send_password_reset_email(user.email, raw))
+		try:
+			send_password_reset_email_task.delay(user.email, raw)
+		except Exception:
+			logger.exception("Failed to enqueue password reset email for %s", _mask_email(user.email))
 	return SuccessResponse(message="If this email is registered, you'll receive a reset link shortly.")
 
 
@@ -191,6 +243,34 @@ async def password_reset(request: ResetPasswordRequest, session: DBSession) -> S
 	await reset_password(session, request.token, request.new_password)
 	await session.commit()
 	return SuccessResponse(message="Password reset successfully.")
+
+
+@router.post(
+	"/logout",
+	response_model=SuccessResponse,
+	status_code=status.HTTP_200_OK,
+)
+async def logout(
+	current_user: CurrentUser,
+	session: DBSession,
+	credentials: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)],
+	refresh_token: Annotated[str | None, Cookie()] = None,
+) -> SuccessResponse:
+	"""Revoke the current access token.
+
+	The token and refresh token is added to the server-side blocklist so it cannot be reused,
+	even if its intrinsic TTL has not yet elapsed.  The client is still
+	responsible for discarding the token locally.
+	"""
+	if not refresh_token:
+		raise UnauthorizedError(message="Refresh token cookie is required")
+	access_token_payload = decode_access_token(credentials.credentials)
+	access_token_jti: str = access_token_payload["jti"]
+	access_token_expires_at = datetime.fromtimestamp(access_token_payload["exp"], tz=timezone.utc)
+	await revoke_token(session, jti=access_token_jti, user_id=current_user.id, expires_at=access_token_expires_at)
+	await revoke_refresh_token(refresh_token, session)
+
+	return SuccessResponse(message="Logged out successfully.")
 
 
 @router.get("/google")
@@ -248,7 +328,7 @@ async def google_callback(
 	)
 
 
-@router.post("/refresh-tokens", response_model=SuccessResponse[TokenResponse])
+@router.post("/refresh", response_model=SuccessResponse[TokenResponse])
 async def refresh(
 	session: DBSession,
 	response: Response,
@@ -257,7 +337,12 @@ async def refresh(
 	"""Refresh the access and refresh tokens."""
 	if not refresh_token:
 		raise UnauthorizedError(message="Refresh token cookie is required")
-	tokens = await refresh_all_tokens(session=session, refresh_token=refresh_token)
+	payload = decode_refresh_token(refresh_token)
+	refresh_token_jti: str = payload["jti"]
+	if await is_token_revoked(session, refresh_token_jti):
+		raise UnauthorizedError(message="Refresh token has been revoked")
+	await revoke_refresh_token(refresh_token, session)
+	tokens = await rotate_all_tokens(session=session, refresh_token=refresh_token)
 
 	settings = get_settings()
 

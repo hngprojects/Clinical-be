@@ -10,13 +10,12 @@ from app.core.security import hash_password, verify_password
 from app.models.otp import OtpPurpose
 from app.models.user import User, UserRole
 from app.schemas.auth import SignupRequest
-from app.services.auth.email import send_otp_email
 from app.services.auth.otp import (
 	OtpVerificationError,
 	create_otp_for_user,
 	verify_otp_for_user,
 )
-from app.services.auth.tokens import create_access_token, create_refresh_token, delete_refresh_token
+from app.services.auth.tokens import create_access_token, create_refresh_token
 
 
 async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
@@ -25,8 +24,8 @@ async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
 	return result.scalar_one_or_none()
 
 
-async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
-	"""Create an unverified user (with hashed password) and send an email-verification OTP.
+async def signup_user(session: AsyncSession, payload: SignupRequest) -> tuple[User, str]:
+	"""Create an unverified user (with hashed password) and return an email-verification OTP.
 
 	If a user already exists for the email:
 	- and is verified → raises 409 Conflict.
@@ -70,13 +69,7 @@ async def signup_user(session: AsyncSession, payload: SignupRequest) -> User:
 	await session.commit()
 	await session.refresh(user)
 
-	await send_otp_email(
-		to_email=user.email,
-		first_name=user.first_name or user.email.split("@")[0],
-		code=code,
-		purpose=OtpPurpose.EMAIL_VERIFICATION,
-	)
-	return user
+	return user, code
 
 
 async def authenticate_credentials(session: AsyncSession, *, email: str, password: str) -> tuple[User, str, int, str]:
@@ -101,7 +94,6 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	user.last_login_at = now
 	await session.commit()
 	await session.refresh(user)
-	await delete_refresh_token(user.id, session)
 	token, ttl_seconds = create_access_token(user.id)
 	refresh_token = await create_refresh_token(user.id, session)
 	await session.commit()
@@ -144,8 +136,8 @@ async def authenticate_otp(
 	return user, token, ttl_seconds, refresh_token
 
 
-async def resend_otp(session: AsyncSession, *, email: str) -> User:
-	"""Re-issue an email-verification OTP."""
+async def resend_otp(session: AsyncSession, *, email: str) -> tuple[User, str]:
+	"""Re-issue an email-verification OTP and return the code."""
 	user = await _get_user_by_email(session, email)
 	if user is None:
 		raise NotFoundError("No account found for this email.")
@@ -158,13 +150,7 @@ async def resend_otp(session: AsyncSession, *, email: str) -> User:
 	await session.commit()
 	await session.refresh(user)
 
-	await send_otp_email(
-		to_email=user.email,
-		first_name=user.first_name or user.email.split("@")[0],
-		code=code,
-		purpose=OtpPurpose.EMAIL_VERIFICATION,
-	)
-	return user
+	return user, code
 
 
 def otp_ttl_seconds() -> int:
