@@ -44,6 +44,13 @@ class ConflictError(HTTPException):
 		super().__init__(status_code=status.HTTP_409_CONFLICT, detail=message)
 
 
+class InterpretationError(HTTPException):
+	"""Raised when the AI interpretation service cannot produce a result."""
+
+	def __init__(self, message: str = "AI interpretation failed") -> None:
+		super().__init__(status_code=status.HTTP_502_BAD_GATEWAY, detail=message)
+
+
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
 	"""Handles all HTTPExceptions and returns a consistent error response."""
 	return JSONResponse(

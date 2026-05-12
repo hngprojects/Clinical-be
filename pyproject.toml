@@ -18,9 +18,14 @@ dependencies = [
     "celery>=5.4.0",
     "redis>=5.2.0",
     "resend>=0.8.0",
+    "langgraph>=0.2.30",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-google-genai>=2.0.0",
     "pip-audit>=2.10.0",
     "urllib3>=2.7.0",
     "bandit>=1.9.4",
+
 ]
 
 [dependency-groups]
