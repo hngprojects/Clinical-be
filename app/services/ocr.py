@@ -4,7 +4,6 @@ import mimetypes
 
 from openai import OpenAI
 
-
 # ─── Custom Exception ────────────────────────────────────────────────────────
 
 
