@@ -1,9 +1,3 @@
-[project]
-name = "clinsights"
-version = "0.1.0"
-description = "An AI-powered laboratory result interpretation app"
-readme = "README.md"
-requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.136.1",
     "sqlalchemy[asyncio]>=2.0.36",
@@ -18,45 +12,5 @@ dependencies = [
     "celery>=5.4.0",
     "redis>=5.2.0",
     "resend>=0.8.0",
-]
-
-[dependency-groups]
-dev = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.24.0",
-    "httpx>=0.28.0",
-    "ruff>=0.15.12",
-    "faker>=40.15.0",
-    "pytest-pylembic>=0.3.0",
-    "commitizen>=4.15.1",
-]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-
-[tool.ruff]
-target-version = "py313"
-line-length = 120
-exclude = ["alembic", "tests"]
-
-[tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "I",    # isort
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "tab"
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-version = "0.1.0"
-version_files = [
-    "pyproject.toml:version"
+    "openai>=1.0.0",
 ]
