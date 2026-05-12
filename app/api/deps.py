@@ -18,39 +18,39 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-	session: DBSession,
-	credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    session: DBSession,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> User:
-	"""Resolve the authenticated user from a Bearer JWT."""
-	if credentials is None or credentials.scheme.lower() != "bearer":
-		raise UnauthorizedError("Missing or invalid Authorization header.")
+    """Resolve the authenticated user from a Bearer JWT."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise UnauthorizedError("Missing or invalid Authorization header.")
 
-	try:
-		payload = decode_access_token(credentials.credentials)
-	except jwt.ExpiredSignatureError as exc:
-		raise UnauthorizedError("Token has expired.") from exc
-	except jwt.PyJWTError as exc:
-		raise UnauthorizedError("Invalid authentication token.") from exc
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except jwt.ExpiredSignatureError as exc:
+        raise UnauthorizedError("Token has expired.") from exc
+    except jwt.PyJWTError as exc:
+        raise UnauthorizedError("Invalid authentication token.") from exc
 
-	jti = payload.get("jti")
-	if not jti or await is_token_revoked(session, jti):
-		raise UnauthorizedError("Token has been revoked.")
+    jti = payload.get("jti")
+    if not jti or await is_token_revoked(session, jti):
+        raise UnauthorizedError("Token has been revoked.")
 
-	subject = payload.get("sub")
-	if not subject:
-		raise UnauthorizedError("Invalid authentication token.")
+    subject = payload.get("sub")
+    if not subject:
+        raise UnauthorizedError("Invalid authentication token.")
 
-	try:
-		user_id = UUID(str(subject))
-	except ValueError as exc:
-		raise UnauthorizedError("Invalid authentication token.") from exc
+    try:
+        user_id = UUID(str(subject))
+    except ValueError as exc:
+        raise UnauthorizedError("Invalid authentication token.") from exc
 
-	user = await session.get(User, user_id)
-	if user is None or not user.is_active:
-		raise UnauthorizedError("User not found or disabled.")
-	if not user.is_email_verified:
-		raise UnauthorizedError("Email address not verified.")
-	return user
+    user = await session.get(User, user_id)
+    if user is None or not user.is_active:
+        raise UnauthorizedError("User not found or disabled.")
+    if not user.is_email_verified:
+        raise UnauthorizedError("Email address not verified.")
+    return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

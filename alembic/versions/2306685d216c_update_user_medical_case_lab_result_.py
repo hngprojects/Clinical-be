@@ -5,10 +5,11 @@ Revises: 90aeb7c687d7
 Create Date: 2026-05-09 10:21:57.882420
 
 """
+
 from typing import Sequence, Union
 
-revision: str = '2306685d216c'
-down_revision: Union[str, None] = '90aeb7c687d7'
+revision: str = "2306685d216c"
+down_revision: Union[str, None] = "90aeb7c687d7"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
