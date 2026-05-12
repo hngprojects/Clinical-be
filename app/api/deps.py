@@ -56,5 +56,29 @@ async def get_current_user(
 		raise UnauthorizedError("Email address not verified.")
 	return user
 
+async def get_optional_current_user(
+    session: DBSession,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Depends(bearer_scheme),
+    ],
+) -> User | None:
+    """
+    Return the authenticated user if a valid Bearer token is provided.
+    Return None when no token is provided.
+    """
+    if credentials is None:
+        return None
+
+    return await get_current_user(
+        session=session,
+        credentials=credentials,
+    )
+
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+OptionalCurrentUser = Annotated[
+    User | None,
+    Depends(get_optional_current_user),
+]
