@@ -45,8 +45,8 @@ jobs:
             echo "Running migrations..."
             uv run alembic upgrade head
 
-            pm2 start ecosystem.config.js --env staging
-            pm2 start ecosystem.config.js --env staging --update-env
+            pm2 delete staging celery-worker-staging flower-staging 2>/dev/null || true
+            pm2 start ecosystem.config.js --only staging,celery-worker-staging,flower-staging
             pm2 save
 
   # ============================================
@@ -72,8 +72,6 @@ jobs:
             echo "Installing dependencies..."
             uv sync
 
-            echo "Running migrations..."
-            uv run alembic upgrade head
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
             export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
@@ -83,6 +81,10 @@ jobs:
             export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
             export RESENT_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}"
-            pm2 start ecosystem.config.js --env production
-            pm2 start ecosystem.config.js --env production --update-env
+
+            echo "Running migrations..."
+            uv run alembic upgrade head
+
+            pm2 delete production celery-worker-production flower-production 2>/dev/null || true
+            pm2 start ecosystem.config.js --only production,celery-worker-production,flower-production
             pm2 save
