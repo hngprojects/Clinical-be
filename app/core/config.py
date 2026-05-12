@@ -57,6 +57,15 @@ class Settings(BaseSettings):
 	FRONTEND_RESET_PASSWORD_URL: str = ""
 	PASSWORD_RESET_TOKEN_EXPIRES_MINUTES: int = 60
 
+	# AI interpretation
+	AI_PROVIDER: str = "gemini"
+	AI_MODEL: str = "gemini-1.5-flash"
+	AI_TEMPERATURE: float = 0.2
+	AI_MAX_RETRIES: int = 2
+	AI_TIMEOUT_SECONDS: int = 30
+	GEMINI_API_KEY: str | None = None
+	OPENAI_API_KEY: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:
