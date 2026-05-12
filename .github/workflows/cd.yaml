@@ -16,7 +16,7 @@ jobs:
     environment: staging
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'staging'
     steps:
-      - name: Deploy to Staging
+      - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -25,7 +25,11 @@ jobs:
           script: |
             cd /home/akinola/Clinical-be
             git pull origin staging
+
+            echo "Installing dependencies..."
             uv sync
+
+            echo "Running migrations..."
             uv run alembic upgrade head
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
@@ -49,7 +53,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     environment: production
     steps:
-      - name: Deploy to Production
+      - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -58,7 +62,11 @@ jobs:
           script: |
             cd /home/akinola/Clinical-be
             git pull origin main
+
+            echo "Installing dependencies..."
             uv sync
+
+            echo "Running migrations..."
             uv run alembic upgrade head
             export DATABASE_URL="${{ secrets.DATABASE_URL }}"
             export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"

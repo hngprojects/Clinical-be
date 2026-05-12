@@ -121,6 +121,8 @@ clinsights-be/
 │   ├── env.py                             # Wired to app.models.Base.metadata + settings
 │   └── versions/                          # Migration files — one per schema change
 ├── tests/                                 # Pytest suite
+│   ├── smoke_test.py
+│   ├── test_health.py
 ├── .env.example
 ├── alembic.ini
 ├── pyproject.toml
@@ -244,6 +246,56 @@ Add Pydantic request/response models to `app/schemas/`. Keep them separate from 
 
 ### New business logic
 Add it to `app/services/`. Routes should stay thin: validate input → call service → return response.
+
+---
+
+## Testing
+
+Install dev dependencies:
+
+```bash
+uv sync
+```
+
+Run the app
+
+```bash
+uv run uvicorn app.main:app --reload
+```
+
+### Smoke tests
+
+Validates every endpoint for correct status codes, response shape, and edge cases (bad input, wrong credentials, anti-enumeration, etc.). Requires your server to be running.
+
+```bash
+pytest tests/smoke_test.py -v --base-url=http://localhost:8000
+```
+
+### Full happy path
+
+The happy-path tests (signup → verify OTP → login → `/me`) are skipped by default because they need a real OTP. To run them:
+
+1. Start the server with `ALLOW_STDOUT_EMAIL=true` so OTPs print to stdout instead of being emailed
+2. Trigger a signup to get an OTP in the logs
+3. Pass it via `TEST_OTP`:
+
+```bash
+TEST_OTP=123456 pytest tests/smoke_test.py -v --base-url=http://localhost:8000
+```
+
+### Unit / integration tests
+
+The original `test_health.py` runs against the app directly without a live server:
+
+```bash
+uv run pytest tests/test_health.py -v
+```
+
+Or run everything at once:
+
+```bash
+uv run pytest -v
+```
 
 ---
 
