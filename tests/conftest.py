@@ -7,19 +7,20 @@ import pytest
 #   pytest tests/smoke_test.py -v --base-url=http://localhost:8000
 # ---------------------------------------------------------------------------
 
+
 def pytest_addoption(parser):
-	parser.addoption(
-		"--base-url",
-		action="store",
-		default=None,
-		help="Base URL of a running server. If set, smoke tests hit the live server.",
-	)
+    parser.addoption(
+        "--base-url",
+        action="store",
+        default=None,
+        help="Base URL of a running server. If set, smoke tests hit the live server.",
+    )
 
 
 def pytest_configure(config):
-	base = config.getoption("--base-url", default=None)
-	if base:
-		os.environ["TEST_BASE_URL"] = base
+    base = config.getoption("--base-url", default=None)
+    if base:
+        os.environ["TEST_BASE_URL"] = base
 
 
 # ---------------------------------------------------------------------------
@@ -28,15 +29,16 @@ def pytest_configure(config):
 # without the full app dependencies installed.
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def client():
-	os.environ.setdefault(
-		"DATABASE_URL",
-		"postgresql+asyncpg://postgres:postgres@localhost:5432/test",
-	)
-	from httpx import ASGITransport, AsyncClient
-	from app.main import app
+    os.environ.setdefault(
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/test",
+    )
+    from httpx import ASGITransport, AsyncClient
+    from app.main import app
 
-	transport = ASGITransport(app=app)
-	async with AsyncClient(transport=transport, base_url="http://test") as ac:
-		yield ac
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac

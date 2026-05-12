@@ -45,7 +45,9 @@ def test_no_duplicate_revision_ids(script_dir: ScriptDirectory) -> None:
     """Every revision must have a unique ID."""
     seen: set[str] = set()
     for rev in script_dir.walk_revisions():
-        assert rev.revision not in seen, f"Duplicate revision ID detected: {rev.revision}"
+        assert rev.revision not in seen, (
+            f"Duplicate revision ID detected: {rev.revision}"
+        )
         seen.add(rev.revision)
 
 

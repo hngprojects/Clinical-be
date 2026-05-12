@@ -9,34 +9,36 @@ from app.api.v1.router import api_router
 from app.core.celery_app import configure_celery
 from app.core.config import get_settings
 from app.core.exceptions import (
-	http_exception_handler,
-	unhandled_exception_handler,
-	validation_exception_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
 )
 
 settings = get_settings()
 
 if not settings.RESEND_API_KEY and not settings.ALLOW_STDOUT_EMAIL:
-	import warnings
+    import warnings
 
-	warnings.warn("Resend API key (RESEND_API_KEY) is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail.")
+    warnings.warn(
+        "Resend API key (RESEND_API_KEY) is not set and ALLOW_STDOUT_EMAIL is False. Emails will fail."
+    )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> None:  # noqa: ARG001
-	configure_celery()
-	yield
+    configure_celery()
+    yield
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 # CORS
 app.add_middleware(
-	CORSMiddleware,
-	allow_origins=settings.CORS_ORIGINS,
-	allow_credentials=True,
-	allow_methods=["*"],
-	allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Exception handlers
@@ -50,4 +52,4 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 @app.get("/")
 def root() -> dict[str, str]:
-	return {"message": f"{settings.PROJECT_NAME} is running"}
+    return {"message": f"{settings.PROJECT_NAME} is running"}
