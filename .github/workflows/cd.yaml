@@ -1,29 +1,29 @@
 name: CD
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [staging, main]
 
 jobs:
+  # ============================================
+  # Deploy Staging (staging branch)
+  # ============================================
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging'
     environment: staging
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'staging'
     steps:
       - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
-            cd ~/Clinical-be
-
-            echo "Pulling latest staging code..."
-            git fetch origin staging
-            git checkout staging
+            cd /home/akinola/Clinical-be
             git pull origin staging
 
             echo "Installing dependencies..."
@@ -31,32 +31,36 @@ jobs:
 
             echo "Running migrations..."
             uv run alembic upgrade head
-
-            echo "Restarting application..."
-            pm2 restart staging || pm2 start "uv run uvicorn app.main:app --host 0.0.0.0 --port 8001" --name staging
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            export GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}"
+            export OTP_PEPPER="${{ secrets.OTP_PEPPER }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export RESENT_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}"
+            pm2 start ecosystem.config.js --env staging
+            pm2 start ecosystem.config.js --env staging --update-env
             pm2 save
 
-            echo "Deployment complete!"
-
+  # ============================================
+  # Deploy Production (main branch)
+  # ============================================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     environment: production
     steps:
       - name: Deploy to Production Server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
-            cd ~/Clinical-be
-
-            echo "Pulling latest production code..."
-            git fetch origin main
-            git checkout main
+            cd /home/akinola/Clinical-be
             git pull origin main
 
             echo "Installing dependencies..."
@@ -64,9 +68,15 @@ jobs:
 
             echo "Running migrations..."
             uv run alembic upgrade head
-
-            echo "Restarting application..."
-            pm2 restart production || pm2 start "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000" --name production
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}"
+            export GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+            export GOOGLE_REDIRECT_URI="${{ secrets.GOOGLE_REDIRECT_URI }}"
+            export OTP_PEPPER="${{ secrets.OTP_PEPPER }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export RESENT_FROM_EMAIL="${{ secrets.RESEND_FROM_EMAIL }}"
+            pm2 start ecosystem.config.js --env production
+            pm2 start ecosystem.config.js --env production --update-env
             pm2 save
-
-            echo "Deployment complete!"
