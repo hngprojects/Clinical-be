@@ -1,7 +1,9 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.services.ocr import OCRExtractionError, extract_lab_results
+
 router = APIRouter(prefix="/ocr", tags=["OCR"])
+
 
 @router.post("/extract")
 async def extract_ocr(file: UploadFile = File(...)):
@@ -11,7 +13,7 @@ async def extract_ocr(file: UploadFile = File(...)):
     if file.content_type not in SUPPORTED_TYPES:
         raise HTTPException(
             status_code=415,
-            detail=f"Unsupported file type: {file.content_type}. Use jpeg, png, or webp."
+            detail=f"Unsupported file type: {file.content_type}. Use jpeg, png, or webp.",
         )
 
     file_bytes = await file.read()

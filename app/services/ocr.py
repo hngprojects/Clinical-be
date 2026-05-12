@@ -1,12 +1,16 @@
 import base64
 import json
 import mimetypes
+
 from openai import OpenAI
+
 
 # ─── Custom Exception ────────────────────────────────────────────────────────
 
+
 class OCRExtractionError(Exception):
     """Raised when OCR extraction fails for any reason."""
+
     pass
 
 
@@ -47,12 +51,12 @@ USER_PROMPT = "Extract all lab test results from this lab report image."
 
 # ─── Core Functions ──────────────────────────────────────────────────────────
 
-def _encode_file_to_base64_url(file_bytes: bytes, filename: str) -> str:
+
+def _encode_file_to_base64_url(file_bytes: bytes, filename: str) -> tuple:
     """Encode raw file bytes into a base64 Data URL."""
-    # Detect MIME type from filename
     mime_type, _ = mimetypes.guess_type(filename)
     if not mime_type:
-        mime_type = "image/jpeg"  # safe default for lab report scans
+        mime_type = "image/jpeg"
 
     encoded = base64.b64encode(file_bytes).decode("utf-8")
     return f"data:{mime_type};base64,{encoded}", mime_type
@@ -76,7 +80,7 @@ def _validate_response(data: dict) -> dict:
 
 def extract_lab_results(file_bytes: bytes, filename: str) -> dict:
     """
-    Extract structured lab test results from an image or PDF using GPT-4o-mini vision.
+    Extract structured lab test results from an image using GPT-4o-mini vision.
 
     Args:
         file_bytes: Raw bytes of the uploaded file.
@@ -86,10 +90,10 @@ def extract_lab_results(file_bytes: bytes, filename: str) -> dict:
         dict with 'tests' list, each containing name, value, unit, reference_range.
 
     Raises:
-        OCRExtractionError: On any failure — API error, parse error, or bad structure.
+        OCRExtractionError: On any failure.
     """
     try:
-        data_url, mime_type = _encode_file_to_base64_url(file_bytes, filename)
+        data_url, _ = _encode_file_to_base64_url(file_bytes, filename)
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -119,11 +123,10 @@ def extract_lab_results(file_bytes: bytes, filename: str) -> dict:
         return validated
 
     except OCRExtractionError:
-        raise  # re-raise our own clean errors as-is
+        raise
 
     except json.JSONDecodeError:
         raise OCRExtractionError("Failed to parse AI response as JSON.")
 
-    except Exception as e:
-        # Mask all raw API errors, tracebacks, and keys from the frontend
-        raise OCRExtractionError(f"OCR extraction failed. Please try again.")
+    except Exception:
+        raise OCRExtractionError("OCR extraction failed. Please try again.")
