@@ -95,7 +95,7 @@ async def authenticate_credentials(session: AsyncSession, *, email: str, passwor
 	await session.commit()
 	await session.refresh(user)
 	token, ttl_seconds = create_access_token(user.id)
-	refresh_token = await create_refresh_token(user.id, session)
+	refresh_token = await create_refresh_token(user.id)
 	await session.commit()
 	return user, token, ttl_seconds, refresh_token
 
@@ -105,8 +105,8 @@ async def authenticate_otp(
 	*,
 	email: str,
 	code: str,
-) -> tuple[User, str, int]:
-	"""Verify an email-verification OTP and return (user, access_token, ttl_seconds).
+) -> tuple[User, str, int, str]:
+	"""Verify an email-verification OTP and return (user, access_token, ttl_seconds, refresh_token).
 
 	Flips `is_email_verified=True` on success.
 	"""
@@ -132,7 +132,7 @@ async def authenticate_otp(
 	await session.refresh(user)
 
 	token, ttl_seconds = create_access_token(user.id)
-	refresh_token = await create_refresh_token(user.id, session)
+	refresh_token = await create_refresh_token(user.id)
 	return user, token, ttl_seconds, refresh_token
 
 

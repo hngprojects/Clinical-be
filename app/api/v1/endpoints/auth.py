@@ -303,7 +303,7 @@ async def google_callback(
 	user = await get_or_create_google_user(session, google_user)
 
 	app_access_token, ttl_seconds = create_access_token(user.id)
-	refresh_token = await create_refresh_token(user.id, session)
+	refresh_token = await create_refresh_token(user.id)
 	settings = get_settings()
 	response.set_cookie(
 		key="refresh_token",

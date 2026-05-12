@@ -70,10 +70,6 @@ class TokenPair(BaseModel):
 	token_type: str = "bearer"
 
 
-class RefreshTokenBase(BaseModel):
-	refresh_token: str
-
-
 class OtpDispatchResponse(BaseModel):
 	"""Returned after an OTP is dispatched (signup or resend)."""
 

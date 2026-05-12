@@ -10,7 +10,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 if TYPE_CHECKING:
-	from app.models.auth import RefreshToken
 	from app.models.chat import Chat
 	from app.models.medical_case import MedicalCase
 	from app.models.notification import Notification
@@ -62,10 +61,6 @@ class User(Base):
 	chats: Mapped[list["Chat"]] = relationship(back_populates="user")
 	notifications: Mapped[list["Notification"]] = relationship(back_populates="user")
 	otp_codes: Mapped[list["OtpCode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-
-	refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
-		"RefreshToken", back_populates="user", cascade="all, delete-orphan"
-	)
 
 	@property
 	def full_name(self) -> str:
