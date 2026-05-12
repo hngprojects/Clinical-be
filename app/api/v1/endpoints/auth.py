@@ -286,18 +286,19 @@ async def google_login() -> RedirectResponse:
 	return RedirectResponse(url=google_auth_url)
 
 
-@router.get("/google/callback", response_model=SuccessResponse[TokenResponse])
+@router.get("/google/callback", response_model=RedirectResponse)
 async def google_callback(
 	code: str,
 	session: DBSession,
 	response: Response,
-) -> SuccessResponse[TokenResponse]:
+) -> RedirectResponse:
 	"""Handle the Google OAuth callback and return app tokens."""
 	token_data = await exchange_google_code(code)
 	google_access_token = token_data.get("access_token")
 
 	if not google_access_token:
 		raise HTTPException(status_code=400, detail="Google access token not found")
+	settings = get_settings()
 
 	google_user = await fetch_google_user_info(google_access_token)
 	user = await get_or_create_google_user(session, google_user)
@@ -314,15 +315,9 @@ async def google_callback(
 		max_age=settings.JWT_REFRESH_TOKEN_EXPIRES_MINUTES * 60,
 	)
 
-	return SuccessResponse(
-		message="Logged in successfully.",
-		data=TokenResponse(
-			access_token=app_access_token,
-			token_type="bearer",
-			expires_in=ttl_seconds,
-			user=UserResponse.model_validate(user),
-		),
-	)
+	redirect_url = f"{settings.FRONTEND_AUTH_CALLBACK_URL}?{urlencode({'access_token': app_access_token})}"
+
+	return RedirectResponse(url=redirect_url)
 
 
 @router.post("/refresh", response_model=SuccessResponse[TokenResponse])
