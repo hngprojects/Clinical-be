@@ -9,9 +9,9 @@ celery_app.conf.update(
 	worker_prefetch_multiplier=1,
 	task_default_queue="default",
 	task_routes={
-		"app.tasks.email.*": {"queue": EMAIL_QUEUE},
+		"app.tasks.emails.*": {"queue": EMAIL_QUEUE},
 	},
-	include=["app.tasks.email"],
+	include=["app.tasks.emails"],
 )
 
 

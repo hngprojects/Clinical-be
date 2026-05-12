@@ -1,0 +1,10 @@
+<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;padding:24px;">
+  <p>Hi {{ first_name|safe }},</p>
+  <div style="background:#eef2f7;padding:24px;border-radius:8px;">
+    <h1 style="color:#0b5ed7;margin:0 0 12px 0;">Verify your email</h1>
+    <p>Welcome to Clinsights! Use the code below to verify your email and finish creating your account.</p>
+    <p style="font-weight:700;font-size:20px;margin:12px 0;">{{ code|safe }}</p>
+    <p>This code will expire in {{ expires_minutes }} minutes.</p>
+  </div>
+  <p style="margin-top:18px;color:#64748b;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>
+</div>

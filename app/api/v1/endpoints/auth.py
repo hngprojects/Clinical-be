@@ -43,7 +43,7 @@ from app.services.oauth import (
 	fetch_google_user_info,
 	get_or_create_google_user,
 )
-from app.tasks.email import send_otp_email_task, send_password_reset_email_task
+from app.tasks.emails import send_otp_email_task, send_password_reset_email_task
 
 logger = logging.getLogger(__name__)
 
