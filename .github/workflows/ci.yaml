@@ -1,65 +1,125 @@
 name: CI
 
 on:
-    pull_request:
-        branches: [main]
-    push:
-        branches: [main]
+  push:
+    branches: [dev, staging, main]
+  pull_request:
+    branches: [dev, staging, main]
+
 
 jobs:
-    lint:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
+  # ============================================
+  # LINT
+  # ============================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-            - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-              with:
-                  enable-cache: true
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Install dependencies
-              run: uv sync --dev
+      - name: Install dependencies
+        run: uv sync --dev
 
-            - name: Lint with Ruff
-              run: uv run ruff check --output-format=github .
+      - name: Lint with Ruff
+        run: uv run ruff check --output-format=github .
 
-            - name: Format check with Ruff
-              run: uv run ruff format --check .
+      - name: Format check with Ruff
+        run: uv run ruff format --check .
 
-    test:
-        runs-on: ubuntu-latest
-        services:
-            postgres:
-                image: postgres:17
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    POSTGRES_DB: test_db
-                ports:
-                    - 5433:5432
-                options: >-
-                    --health-cmd "pg_isready -U postgres"
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
+  # ============================================
+  # SECURITY GATES
+  # ============================================
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        steps:
-            - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-              with:
-                  enable-cache: true
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: uv sync --dev
 
-            - name: Install dependencies
-              run: uv sync --dev
+      - name: Check for vulnerabilities in dependencies
+        run: uv run pip-audit
 
-            - name: Run migrations
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
-              run: uv run alembic upgrade head
+      - name: Run Bandit security scan
+        run: uv run bandit -r app/ -ll -ii
 
-            - name: Run tests
-              env:
-                  DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
-              run: uv run pytest --tb=short -q
+      - name: Scan for hardcoded secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --only-verified
+
+  # ============================================
+  # TESTS
+  # ============================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: [lint, security]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
+          OTP_PEPPER: ci-test-otp-pepper-not-for-production
+        run: uv run alembic upgrade head
+
+      - name: Start API and run tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/test_db
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
+          OTP_PEPPER: ci-test-otp-pepper-not-for-production
+          ALLOW_STDOUT_EMAIL: "True"
+          SMTP_USERNAME: ""
+          SMTP_PASSWORD: ""
+        run: |
+          uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+
+          echo "Waiting for API..."
+
+          for i in {1..30}; do
+            curl -f http://127.0.0.1:8000/api/v1/health && break
+            sleep 1
+          done
+
+          uv run pytest --tb=short -q

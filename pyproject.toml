@@ -12,7 +12,15 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "psycopg2-binary>=2.9.12",
     "pre-commit>=4.6.0",
-    "resend>=2.30.0",
+    "httpx>=0.28.1",
+    "pyjwt>=2.10.1",
+    "bcrypt>=5.0.0",
+    "celery>=5.4.0",
+    "redis>=5.2.0",
+    "resend>=0.8.0",
+    "pip-audit>=2.10.0",
+    "urllib3>=2.7.0",
+    "bandit>=1.9.4",
 ]
 
 [dependency-groups]
@@ -21,6 +29,9 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "ruff>=0.15.12",
+    "faker>=40.15.0",
+    "pytest-pylembic>=0.3.0",
+    "commitizen>=4.15.1",
 ]
 
 [tool.pytest.ini_options]
@@ -45,3 +56,10 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "tab"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = [
+    "pyproject.toml:version"
+]
