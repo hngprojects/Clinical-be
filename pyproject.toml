@@ -13,9 +13,6 @@ dependencies = [
     "redis>=5.2.0",
     "resend>=0.8.0",
     "openai>=1.0.0",
-    "pip-audit>=2.10.0",
-    "urllib3>=2.7.0",
-    "bandit>=1.9.4",
 ]
 
 [dependency-groups]
@@ -27,34 +24,7 @@ dev = [
     "faker>=40.15.0",
     "pytest-pylembic>=0.3.0",
     "commitizen>=4.15.1",
-]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-
-[tool.ruff]
-target-version = "py313"
-line-length = 120
-exclude = ["alembic", "tests"]
-
-[tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "F",    # pyflakes
-    "I",    # isort
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "tab"
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-version = "0.1.0"
-version_files = [
-    "pyproject.toml:version"
+    "pip-audit>=2.10.0",
+    "urllib3>=2.7.0",
+    "bandit>=1.9.4",
 ]
