@@ -286,7 +286,7 @@ async def google_login() -> RedirectResponse:
 	return RedirectResponse(url=google_auth_url)
 
 
-@router.get("/google/callback", response_model=RedirectResponse)
+@router.get("/google/callback")
 async def google_callback(
 	code: str,
 	session: DBSession,
